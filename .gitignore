@@ -1,0 +1,13 @@
+﻿.env
+.venv/
+__pycache__/
+*.pyc
+*.log
+.streamlit/secrets.toml
+
+app_before_*.py
+*_test.py
+setup_secret_key.py
+setup_resend_key.py
+resend_confirmation.py
+opportunities_backup.json
