@@ -139,7 +139,7 @@ def ku_match_text(text):
         (r"^Your grade meets the minimum (.+)% requirement$", lambda m: f"نمرەکەت کەمترین مەرجی {m.group(1)}٪ دابین دەکات."),
         (r"^Requires a minimum academic average of (.+)%$", lambda m: f"لانیکەم ناوەندی ئەکادیمی {m.group(1)}٪ پێویستە."),
         (r"^You meet the (.+)-year work experience requirement$", lambda m: f"مەرجی {m.group(1)} ساڵ ئەزموونی کارت دابین کردووە."),
-        (r"^Requires (.+) ساڵ of work experience$", lambda m: f"{m.group(1)} ساڵ ئەزموونی کار پێویستە."),
+        (r"^Requires (.+) years of work experience$", lambda m: f"{m.group(1)} ساڵ ئەزموونی کار پێویستە."),
         (r"^Missing required language: (.+)$", lambda m: f"زمانی پێویست کەمە: {ku_value(m.group(1))}."),
         (r"^You meet the (.+) residency requirement$", lambda m: f"مەرجی نیشتەجێبوون لە {ku_value(m.group(1))} دابین دەکەیت."),
         (r"^Applicants must live in (.+)$", lambda m: f"داواکار دەبێت لە {ku_value(m.group(1))} نیشتەجێ بێت."),
@@ -186,7 +186,7 @@ def ku_booster_label(text):
     if match:
         return f"ناوەندی ئەکادیمی بگەیەنە {match.group(1)}٪"
 
-    match = re.match(r"^Build (.+) ساڵ of work experience$", text)
+    match = re.match(r"^Build (.+) years of work experience$", text)
     if match:
         return f"{match.group(1)} ساڵ ئەزموونی کار کۆبکەرەوە"
 
