@@ -174,7 +174,7 @@ select {
 
 
 /* ======================================================
-   MINIMAL REACTIVE CURSOR
+   MINIMAL WHITE DOT + RING CURSOR
    ====================================================== */
 
 .stApp,
@@ -184,8 +184,8 @@ select {
 .stApp [role="button"],
 section[data-testid="stSidebar"] {
     cursor:
-        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 18 18'%3E%3Ccircle cx='9' cy='9' r='5.3' fill='%23050816' fill-opacity='.72' stroke='%2342e5dd' stroke-width='1.6'/%3E%3Ccircle cx='9' cy='9' r='1.35' fill='%23ffffff'/%3E%3C/svg%3E")
-        9 9,
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12' fill='none' stroke='%23ffffff' stroke-opacity='.14' stroke-width='1'/%3E%3Ccircle cx='16' cy='16' r='3.6' fill='%23ffffff'/%3E%3C/svg%3E")
+        16 16,
         auto !important;
 }
 
@@ -195,8 +195,8 @@ section[data-testid="stSidebar"] {
 .stApp [role="button"]:active,
 section[data-testid="stSidebar"]:active {
     cursor:
-        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='8.5' fill='%2342e5dd' fill-opacity='.12' stroke='%238f62ff' stroke-width='2'/%3E%3Ccircle cx='12' cy='12' r='2' fill='%2342e5dd'/%3E%3C/svg%3E")
-        12 12,
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12.7' fill='none' stroke='%23ffffff' stroke-opacity='.30' stroke-width='1.2'/%3E%3Ccircle cx='16' cy='16' r='4.2' fill='%23ffffff'/%3E%3C/svg%3E")
+        16 16,
         auto !important;
 }
 
@@ -1397,32 +1397,25 @@ components.html(
                 position: fixed;
                 left: 0;
                 top: 0;
-                width: 14px;
-                height: 14px;
-                border: 2px solid #42e5dd;
+                width: 28px;
+                height: 28px;
+                border: 1px solid rgba(255, 255, 255, .28);
                 border-radius: 50%;
                 pointer-events: none;
                 z-index: 2147483647;
-                transform: translate(-50%, -50%) scale(.45);
-                box-shadow:
-                    0 0 12px rgba(66, 229, 221, .65),
-                    0 0 28px rgba(143, 98, 255, .20);
-                animation: helaiClickRipple .52s cubic-bezier(.2,.75,.25,1) forwards;
+                transform: translate(-50%, -50%) scale(.86);
+                animation: helaiClickRipple .42s ease-out forwards;
             }
 
             @keyframes helaiClickRipple {
                 0% {
-                    opacity: .95;
-                    transform: translate(-50%, -50%) scale(.45);
-                }
-
-                70% {
-                    opacity: .55;
+                    opacity: .75;
+                    transform: translate(-50%, -50%) scale(.86);
                 }
 
                 100% {
                     opacity: 0;
-                    transform: translate(-50%, -50%) scale(2.8);
+                    transform: translate(-50%, -50%) scale(1.65);
                 }
             }
         `;
