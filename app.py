@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import html
 from datetime import date
 
@@ -173,7 +174,7 @@ select {
 
 
 /* ======================================================
-   CUSTOM FUTURISTIC CURSOR
+   MINIMAL REACTIVE CURSOR
    ====================================================== */
 
 .stApp,
@@ -183,8 +184,19 @@ select {
 .stApp [role="button"],
 section[data-testid="stSidebar"] {
     cursor:
-        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='34' height='34' viewBox='0 0 34 34'%3E%3Ccircle cx='17' cy='17' r='5' fill='none' stroke='%2342e5dd' stroke-width='2'/%3E%3Ccircle cx='17' cy='17' r='1.7' fill='%2342e5dd'/%3E%3Cpath d='M17 2V9 M17 25V32 M2 17H9 M25 17H32' stroke='%2342e5dd' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E")
-        17 17,
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 18 18'%3E%3Ccircle cx='9' cy='9' r='5.3' fill='%23050816' fill-opacity='.72' stroke='%2342e5dd' stroke-width='1.6'/%3E%3Ccircle cx='9' cy='9' r='1.35' fill='%23ffffff'/%3E%3C/svg%3E")
+        9 9,
+        auto !important;
+}
+
+.stApp:active,
+.stApp button:active,
+.stApp a:active,
+.stApp [role="button"]:active,
+section[data-testid="stSidebar"]:active {
+    cursor:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='8.5' fill='%2342e5dd' fill-opacity='.12' stroke='%238f62ff' stroke-width='2'/%3E%3Ccircle cx='12' cy='12' r='2' fill='%2342e5dd'/%3E%3C/svg%3E")
+        12 12,
         auto !important;
 }
 
@@ -1369,6 +1381,81 @@ hr {
     unsafe_allow_html=True
 )
 
+
+# Small click ripple that appears exactly where the user clicks.
+components.html(
+    """
+<script>
+(function () {
+    const doc = window.parent.document;
+
+    if (!doc.getElementById("helai-click-ripple-style")) {
+        const style = doc.createElement("style");
+        style.id = "helai-click-ripple-style";
+        style.textContent = `
+            .helai-click-ripple {
+                position: fixed;
+                left: 0;
+                top: 0;
+                width: 14px;
+                height: 14px;
+                border: 2px solid #42e5dd;
+                border-radius: 50%;
+                pointer-events: none;
+                z-index: 2147483647;
+                transform: translate(-50%, -50%) scale(.45);
+                box-shadow:
+                    0 0 12px rgba(66, 229, 221, .65),
+                    0 0 28px rgba(143, 98, 255, .20);
+                animation: helaiClickRipple .52s cubic-bezier(.2,.75,.25,1) forwards;
+            }
+
+            @keyframes helaiClickRipple {
+                0% {
+                    opacity: .95;
+                    transform: translate(-50%, -50%) scale(.45);
+                }
+
+                70% {
+                    opacity: .55;
+                }
+
+                100% {
+                    opacity: 0;
+                    transform: translate(-50%, -50%) scale(2.8);
+                }
+            }
+        `;
+
+        doc.head.appendChild(style);
+    }
+
+    if (!doc.documentElement.dataset.helaiClickRippleReady) {
+        doc.documentElement.dataset.helaiClickRippleReady = "1";
+
+        doc.addEventListener(
+            "pointerdown",
+            function (event) {
+                const ripple = doc.createElement("div");
+                ripple.className = "helai-click-ripple";
+                ripple.style.left = event.clientX + "px";
+                ripple.style.top = event.clientY + "px";
+
+                doc.body.appendChild(ripple);
+
+                window.setTimeout(function () {
+                    ripple.remove();
+                }, 560);
+            },
+            true
+        );
+    }
+})();
+</script>
+""",
+    height=0,
+    width=0,
+)
 
 
 # =========================================================
