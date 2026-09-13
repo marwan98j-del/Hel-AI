@@ -1685,6 +1685,75 @@ details summary {
 
 
 # =========================================================
+# CURSOR CLICK EFFECT
+# =========================================================
+
+components.html(
+    """
+<script>
+(function () {
+    const doc = window.parent.document;
+
+    if (!doc.getElementById("helai-click-fx-style")) {
+        const style = doc.createElement("style");
+        style.id = "helai-click-fx-style";
+        style.textContent = `
+            .helai-click-ripple {
+                position: fixed;
+                width: 14px;
+                height: 14px;
+                border: 2px solid #42e5dd;
+                border-radius: 999px;
+                pointer-events: none;
+                z-index: 2147483647;
+                transform: translate(-50%, -50%) scale(.45);
+                box-shadow: 0 0 18px rgba(66, 229, 221, .55);
+                animation: helaiRipple .52s ease-out forwards;
+            }
+
+            @keyframes helaiRipple {
+                0% {
+                    opacity: .95;
+                    transform: translate(-50%, -50%) scale(.45);
+                }
+
+                100% {
+                    opacity: 0;
+                    transform: translate(-50%, -50%) scale(2.8);
+                }
+            }
+        `;
+        doc.head.appendChild(style);
+    }
+
+    if (!doc.documentElement.dataset.helaiClickFx) {
+        doc.documentElement.dataset.helaiClickFx = "1";
+
+        doc.addEventListener(
+            "pointerdown",
+            function (event) {
+                const ripple = doc.createElement("div");
+                ripple.className = "helai-click-ripple";
+                ripple.style.left = event.clientX + "px";
+                ripple.style.top = event.clientY + "px";
+                doc.body.appendChild(ripple);
+
+                window.setTimeout(function () {
+                    ripple.remove();
+                }, 560);
+            },
+            true
+        );
+    }
+})();
+</script>
+""",
+    height=0,
+    width=0,
+)
+
+
+# =========================================================
 # SESSION STATE
 # =========================================================
 
@@ -1930,7 +1999,7 @@ if not st.session_state.access_token:
             )
 
             login_submitted = st.form_submit_button(
-                "چوونەژوورەوە TO HELAI →",
+                "چوونەژوورەوە بۆ HELAI ←",
                 use_container_width=True,
             )
 
@@ -1986,7 +2055,7 @@ if not st.session_state.access_token:
                 else:
 
                     st.error(
-                        login_result["message"]
+                        "چوونەژوورەوە سەرکەوتوو نەبوو. ئیمەیڵ و وشەی نهێنی بپشکنە."
                     )
 
 
@@ -2017,7 +2086,7 @@ if not st.session_state.access_token:
             )
 
             signup_submitted = st.form_submit_button(
-                "CREATE هەژماری HELAI →",
+                "هەژماری HELAI دروست بکە ←",
                 use_container_width=True,
             )
 
@@ -2102,7 +2171,7 @@ if not st.session_state.access_token:
                 else:
 
                     st.error(
-                        signup_result["message"]
+                        "دروستکردنی هەژمار سەرکەوتوو نەبوو. زانیارییەکان بپشکنە و دووبارە هەوڵ بدە."
                     )
 
 
@@ -2143,8 +2212,8 @@ with st.sidebar:
     st.title("HELAI")
 
     st.caption(
-        "Your AI agent for global opportunity discovery, "
-        "matching and readiness."
+        "ئەیجێنتی AI ـی تۆ بۆ دۆزینەوەی هەلی جیهانی، "
+        "گونجان و ئامادەیی."
     )
 
     st.divider()
@@ -2495,14 +2564,16 @@ if st.session_state.ai_imported_opportunity:
     with ex1:
 
         st.markdown(
-            "### شایستەبوون DATA"
+            "### زانیاریی شایستەبوون"
         )
 
         st.write(
             "**خوێندن:**",
-            extracted.get(
-                "education",
-                "Any"
+            ku_value(
+                extracted.get(
+                    "education",
+                    "Any"
+                )
             )
         )
 
@@ -2549,7 +2620,7 @@ if st.session_state.ai_imported_opportunity:
 
         st.write(
             "**نیشتەجێبوون:**",
-            residency or "هیچ شتێک نەدۆزرایەوە"
+            ku_value(residency) if residency else "هیچ شتێک نەدۆزرایەوە"
         )
 
         minimum_grade = extracted.get(
@@ -2650,7 +2721,7 @@ if st.session_state.ai_imported_opportunity:
         st.write(
             "**بەڵگەنامە پێویستەکان:**",
             (
-                ", ".join(required_docs)
+                ku_list(required_docs)
                 if required_docs
                 else "هیچ شتێک نەدۆزرایەوە"
             )
@@ -2658,7 +2729,7 @@ if st.session_state.ai_imported_opportunity:
 
 
     with st.expander(
-        "بینینی داتای خاوەنی AI"
+        "بینینی داتای خاو"
     ):
 
         st.json(
@@ -2699,10 +2770,10 @@ st.html(
 
 <div class="explainer">
 
-    <strong>MATCH</strong> measures relevance.
-    <strong>شایستەبوون</strong> checks mandatory rules.
-    <strong>ئامادەیی</strong> checks whether the documents
-    needed to apply are already available.
+    <strong>گونجان</strong> پەیوەندی هەلەکە بە تۆ دەپێوێت.
+    <strong>شایستەبوون</strong> مەرجە ناچارییەکان دەپشکنێت.
+    <strong>ئامادەیی</strong> دەپشکنێت ئایا بەڵگەنامە پێویستەکان
+    بۆ داواکردن ئامادەن یان نا.
 
 </div>
 """
@@ -2923,6 +2994,7 @@ with st.form(
             "زمانەکان",
             language_options,
             format_func=ku_value,
+            placeholder="هەڵبژێرە",
             default=safe_multiselect_defaults(
                 language_options,
                 saved_profile.get("languages"),
@@ -2933,6 +3005,7 @@ with st.form(
             "تواناکان",
             skill_options,
             format_func=ku_value,
+            placeholder="هەڵبژێرە",
             default=safe_multiselect_defaults(
                 skill_options,
                 saved_profile.get("skills"),
@@ -2943,6 +3016,7 @@ with st.form(
             "بوارەکانی حەز",
             interest_options,
             format_func=ku_value,
+            placeholder="هەڵبژێرە",
             default=safe_multiselect_defaults(
                 interest_options,
                 saved_profile.get("interests"),
@@ -2953,6 +3027,7 @@ with st.form(
             "جۆرەکانی هەل",
             opportunity_type_options,
             format_func=ku_value,
+            placeholder="هەڵبژێرە",
             default=safe_multiselect_defaults(
                 opportunity_type_options,
                 saved_profile.get(
@@ -3103,8 +3178,7 @@ if submitted:
         if not save_result["success"]:
 
             st.error(
-                "HelAI نەیتوانی پڕۆفایلەکەت هەڵبگرێت: "
-                f"{save_result['message']}"
+                "HelAI نەیتوانی پڕۆفایلەکەت هەڵبگرێت. تکایە دووبارە هەوڵ بدە."
             )
 
         else:
@@ -3169,7 +3243,7 @@ if submitted:
 
                 ai_opportunity[
                     "source"
-                ] = "AI imported announcement"
+                ] = "ڕاگەیاندنی هاوردەکراو بە AI"
 
                 ai_opportunity[
                     "is_ai_imported"
@@ -3682,8 +3756,7 @@ if run_matching:
         elif result["eligible"]:
 
             st.info(
-                "You appear eligible, but there are "
-                "application-readiness tasks remaining."
+                "وا دیارە شایستەیت، بەڵام هێشتا هەندێک هەنگاوی ئامادەکاری ماوە."
             )
 
 
@@ -3805,9 +3878,13 @@ if run_matching:
 
             st.write(
                 "**یاسای خوێندن:**",
-                opportunity.get(
-                    "education_rule",
-                    "minimum"
+                (
+                    "ئاستی دیاریکراو"
+                    if opportunity.get(
+                        "education_rule",
+                        "minimum"
+                    ) == "exact"
+                    else "کەمترین ئاست"
                 )
             )
 
@@ -3818,7 +3895,7 @@ if run_matching:
 
             st.write(
                 "**مەرجی نیشتەجێبوون:**",
-                residency or "دیاری نەکراوە"
+                ku_value(residency) if residency else "دیاری نەکراوە"
             )
 
             notes = opportunity.get(
