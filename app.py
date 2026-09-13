@@ -148,8 +148,8 @@ def ku_match_text(text):
         (r"^You already have the required (.+)$", lambda m: f"{ku_value(m.group(1))} ـی پێویستت هەیە."),
         (r"^Missing document: (.+)$", lambda m: f"بەڵگەنامەی کەم: {ku_value(m.group(1))}."),
         (r"^You are looking for (.+) opportunities$", lambda m: f"تۆ بەدوای هەلی {ku_value(m.group(1))} دەگەڕێیت."),
-        (r"^Matching interests: (.+)$", lambda m: "بوارە گونجاوەکان: " + ku_list([x.strip() for x in m.group(1).split(",")]),
-        (r"^Matching skills: (.+)$", lambda m: "توانا گونجاوەکان: " + ku_list([x.strip() for x in m.group(1).split(",")]),
+        (r"^Matching interests: (.+)$", lambda m: "بوارە گونجاوەکان: " + ku_list([x.strip() for x in m.group(1).split(",")])),
+        (r"^Matching skills: (.+)$", lambda m: "توانا گونجاوەکان: " + ku_list([x.strip() for x in m.group(1).split(",")])),
     ]
 
     for pattern, formatter in patterns:
