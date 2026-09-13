@@ -1,7 +1,5 @@
 import streamlit as st
-import streamlit.components.v1 as components
 import html
-import re
 from datetime import date
 
 from matcher import calculate_match, analyze_improvements
@@ -21,176 +19,11 @@ from auth_service import (
 # =========================================================
 
 st.set_page_config(
-    page_title="HelAI | هەلی جیهانی",
+    page_title="HelAI",
     page_icon="🎯",
     layout="wide",
     initial_sidebar_state="expanded"
 )
-
-
-# =========================================================
-# KURDISH SORANI UI HELPERS
-# =========================================================
-
-KU_DISPLAY = {
-    "Open": "کراوە",
-    "Closed": "داخراوە",
-    "Upcoming": "داهاتوو",
-    "Unknown": "نادیار",
-    "Any": "هەر ئاستێک",
-    "High School": "ئامادەیی",
-    "Diploma": "دیپلۆما",
-    "Bachelor's Degree": "بەکالۆریۆس",
-    "Master's Degree": "ماستەر",
-    "PhD": "دکتۆرا",
-    "Sulaymaniyah": "سلێمانی",
-    "Erbil": "هەولێر",
-    "Duhok": "دهۆک",
-    "Halabja": "هەڵەبجە",
-    "Kirkuk": "کەرکووک",
-    "Baghdad": "بەغدا",
-    "Iraq": "عێراق",
-    "Kurdistan Region": "هەرێمی کوردستان",
-    "International": "نێودەوڵەتی",
-    "Other": "هیتر",
-    "Kurdish Sorani": "کوردی سۆرانی",
-    "Kurdish Kurmanji": "کوردی کرمانجی",
-    "Arabic": "عەرەبی",
-    "English": "ئینگلیزی",
-    "Persian": "فارسی",
-    "Turkish": "تورکی",
-    "Artificial Intelligence": "زیرەکی دەستکرد",
-    "Programming": "بەرنامەسازی",
-    "Graphic Design": "دیزاینی گرافیک",
-    "Social Media": "سۆشیال میدیا",
-    "Digital Media": "میدیای دیجیتاڵ",
-    "Video Editing": "دەستکاریکردنی ڤیدیۆ",
-    "Writing": "نووسین",
-    "Translation": "وەرگێڕان",
-    "Microsoft Office": "مایکرۆسۆفت ئۆفیس",
-    "Data Analysis": "شیکردنەوەی داتا",
-    "Marketing": "مارکێتینگ",
-    "Photography": "وێنەگرتن",
-    "Project Management": "بەڕێوەبردنی پڕۆژە",
-    "Technology": "تەکنەلۆجیا",
-    "Media": "میدیا",
-    "Business": "بازرگانی",
-    "Education": "پەروەردە",
-    "Entrepreneurship": "کارئافرینی",
-    "Leadership": "سەرکردایەتی",
-    "Design": "دیزاین",
-    "Research": "توێژینەوە",
-    "Environment": "ژینگە",
-    "Health": "تەندروستی",
-    "Culture": "کەلتوور",
-    "International Programs": "بەرنامە نێودەوڵەتییەکان",
-    "Scholarships": "بورسەکان",
-    "Internships": "ڕاهێنانی کار",
-    "Competitions": "پێشبڕکێکان",
-    "Training Programs": "بەرنامەکانی ڕاهێنان",
-    "Grants": "گرانتەکان",
-    "Fellowships": "فێلۆشیپەکان",
-    "Volunteering": "خۆبەخشین",
-    "Exchange Programs": "بەرنامەکانی ئاڵوگۆڕ",
-    "Passport": "پاسپۆرت",
-    "Valid passport": "پاسپۆرتی دروست",
-    "IELTS / English certificate": "IELTS / بڕوانامەی ئینگلیزی",
-    "Portfolio": "پۆرتفۆلیۆ",
-    "CV": "سیڤی",
-}
-
-
-def ku_value(value):
-    text = str(value or "")
-    return KU_DISPLAY.get(text, text)
-
-
-def ku_list(values):
-    return "، ".join(ku_value(value) for value in (values or []))
-
-
-def ku_match_text(text):
-    text = str(text or "").strip()
-
-    exact = {
-        "This opportunity is closed": "ئەم هەلە داخراوە.",
-        "You meet the age requirement": "مەرجی تەمەنت دابین کردووە.",
-        "No specific education level is required": "هیچ ئاستێکی دیاریکراوی خوێندن پێویست نییە.",
-        "You meet the language requirements": "مەرجەکانی زمانت دابین کردووە.",
-        "You meet the Iraq residency requirement": "مەرجی نیشتەجێبوون لە عێراقت دابین کردووە.",
-        "You meet the Kurdistan Region residency requirement": "مەرجی نیشتەجێبوون لە هەرێمی کوردستانت دابین کردووە.",
-        "Applicants must live in the Kurdistan Region": "داواکار دەبێت لە هەرێمی کوردستان نیشتەجێ بێت.",
-        "Location compatibility is neutral": "گونجانی شوێن لە ئاستێکی ناوەنددایە.",
-        "The opportunity is available across the Kurdistan Region": "ئەم هەلە لە سەرانسەری هەرێمی کوردستان بەردەستە.",
-        "The opportunity is available in Iraq": "ئەم هەلە لە عێراق بەردەستە.",
-        "This is an international opportunity": "ئەمە هەلێکی نێودەوڵەتییە.",
-    }
-
-    if text in exact:
-        return exact[text]
-
-    patterns = [
-        (r"^Minimum age is (.+)$", lambda m: f"کەمترین تەمەن {m.group(1)} ساڵە."),
-        (r"^Maximum age is (.+)$", lambda m: f"زۆرترین تەمەن {m.group(1)} ساڵە."),
-        (r"^Your education matches the required (.+) level$", lambda m: f"ئاستی خوێندنت لەگەڵ {ku_value(m.group(1))} دەگونجێت."),
-        (r"^This opportunity specifically targets (.+) applicants$", lambda m: f"ئەم هەلە بە تایبەتی بۆ داواکاری ئاستی {ku_value(m.group(1))} ـە."),
-        (r"^Your education meets the (.+) requirement$", lambda m: f"خوێندنت مەرجی {ku_value(m.group(1))} دابین دەکات."),
-        (r"^Requires at least (.+)$", lambda m: f"لانیکەم {ku_value(m.group(1))} پێویستە."),
-        (r"^Your grade meets the minimum (.+)% requirement$", lambda m: f"نمرەکەت کەمترین مەرجی {m.group(1)}٪ دابین دەکات."),
-        (r"^Requires a minimum academic average of (.+)%$", lambda m: f"لانیکەم ناوەندی ئەکادیمی {m.group(1)}٪ پێویستە."),
-        (r"^You meet the (.+)-year work experience requirement$", lambda m: f"مەرجی {m.group(1)} ساڵ ئەزموونی کارت دابین کردووە."),
-        (r"^Requires (.+) years of work experience$", lambda m: f"{m.group(1)} ساڵ ئەزموونی کار پێویستە."),
-        (r"^Missing required language: (.+)$", lambda m: f"زمانی پێویست کەمە: {ku_value(m.group(1))}."),
-        (r"^You meet the (.+) residency requirement$", lambda m: f"مەرجی نیشتەجێبوون لە {ku_value(m.group(1))} دابین دەکەیت."),
-        (r"^Applicants must live in (.+)$", lambda m: f"داواکار دەبێت لە {ku_value(m.group(1))} نیشتەجێ بێت."),
-        (r"^The opportunity is located in (.+)$", lambda m: f"شوێنی ئەم هەلە {ku_value(m.group(1))} ـە."),
-        (r"^The opportunity is outside your selected city \((.+)\)$", lambda m: f"ئەم هەلە لە دەرەوەی شاری هەڵبژێردراوتە ({ku_value(m.group(1))})."),
-        (r"^You already have the required (.+)$", lambda m: f"{ku_value(m.group(1))} ـی پێویستت هەیە."),
-        (r"^Missing document: (.+)$", lambda m: f"بەڵگەنامەی کەم: {ku_value(m.group(1))}."),
-        (r"^You are looking for (.+) opportunities$", lambda m: f"تۆ بەدوای هەلی {ku_value(m.group(1))} دەگەڕێیت."),
-        (r"^Matching interests: (.+)$", lambda m: "بوارە گونجاوەکان: " + ku_list([x.strip() for x in m.group(1).split(",")])),
-        (r"^Matching skills: (.+)$", lambda m: "توانا گونجاوەکان: " + ku_list([x.strip() for x in m.group(1).split(",")])),
-    ]
-
-    for pattern, formatter in patterns:
-        match = re.match(pattern, text)
-        if match:
-            return formatter(match)
-
-    return text
-
-
-def ku_booster_label(text):
-    text = str(text or "").strip()
-
-    exact = {
-        "Get a valid passport": "پاسپۆرتێکی دروست بەدەستبهێنە",
-        "Get an IELTS / English certificate": "بڕوانامەی IELTS / ئینگلیزی بەدەستبهێنە",
-        "Create a portfolio": "پۆرتفۆلیۆیەک دروست بکە",
-        "Prepare a professional CV": "سیڤییەکی پیشەیی ئامادە بکە",
-        "Add English language": "زمانی ئینگلیزی زیاد بکە",
-        "Learn Artificial Intelligence": "زیرەکی دەستکرد فێربە",
-        "Learn Programming": "بەرنامەسازی فێربە",
-        "Learn Data Analysis": "شیکردنەوەی داتا فێربە",
-        "Learn Project Management": "بەڕێوەبردنی پڕۆژە فێربە",
-    }
-
-    if text in exact:
-        return exact[text]
-
-    match = re.match(r"^Reach (.+) level$", text)
-    if match:
-        return f"بگە بە ئاستی {ku_value(match.group(1))}"
-
-    match = re.match(r"^Reach a (.+)% academic average$", text)
-    if match:
-        return f"ناوەندی ئەکادیمی بگەیەنە {match.group(1)}٪"
-
-    match = re.match(r"^Build (.+) years of work experience$", text)
-    if match:
-        return f"{match.group(1)} ساڵ ئەزموونی کار کۆبکەرەوە"
-
-    return text
 
 
 # =========================================================
@@ -206,8 +39,8 @@ try:
     opportunities = get_cloud_opportunities()
 except Exception as error:
     st.error(
-        "HelAI نەیتوانی هەلەکان لە بنکەدراوەی هەور بار بکات. "
-        f"وردەکاریی تەکنیکی: {error}"
+        "HelAI could not load opportunities from the cloud database. "
+        f"Details: {error}"
     )
     st.stop()
 
@@ -340,7 +173,7 @@ select {
 
 
 /* ======================================================
-   MINIMAL ROUND CURSOR
+   CUSTOM FUTURISTIC CURSOR
    ====================================================== */
 
 .stApp,
@@ -350,16 +183,8 @@ select {
 .stApp [role="button"],
 section[data-testid="stSidebar"] {
     cursor:
-        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 18 18'%3E%3Ccircle cx='9' cy='9' r='5.5' fill='%23050816' fill-opacity='.78' stroke='%2342e5dd' stroke-width='1.8'/%3E%3Ccircle cx='9' cy='9' r='1.3' fill='%23ffffff'/%3E%3C/svg%3E")
-        9 9,
-        auto !important;
-}
-
-.stApp:active,
-.stApp *:active {
-    cursor:
-        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='9' fill='%2342e5dd' fill-opacity='.12' stroke='%238f62ff' stroke-width='2'/%3E%3Ccircle cx='12' cy='12' r='2' fill='%2342e5dd'/%3E%3C/svg%3E")
-        12 12,
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='34' height='34' viewBox='0 0 34 34'%3E%3Ccircle cx='17' cy='17' r='5' fill='none' stroke='%2342e5dd' stroke-width='2'/%3E%3Ccircle cx='17' cy='17' r='1.7' fill='%2342e5dd'/%3E%3Cpath d='M17 2V9 M17 25V32 M2 17H9 M25 17H32' stroke='%2342e5dd' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E")
+        17 17,
         auto !important;
 }
 
@@ -1539,218 +1364,11 @@ hr {
     }
 }
 
-
-
-/* ======================================================
-   KURDISH SORANI / RTL OVERRIDES
-   ====================================================== */
-
-html,
-body,
-.stApp,
-[data-testid="stAppViewContainer"],
-[data-testid="stMain"],
-.block-container {
-    direction: rtl !important;
-}
-
-body,
-button,
-input,
-textarea,
-select,
-.stApp,
-.stApp p,
-.stApp span,
-.stApp label,
-.stApp h1,
-.stApp h2,
-.stApp h3,
-.stApp h4,
-.stApp h5,
-.stApp h6 {
-    font-family: Tahoma, "Segoe UI", Arial, sans-serif !important;
-}
-
-.block-container,
-.stApp p,
-.stApp label,
-.stApp h1,
-.stApp h2,
-.stApp h3,
-.stApp h4,
-.stApp h5,
-.stApp h6,
-.section,
-.card,
-.explainer {
-    text-align: right !important;
-}
-
-[data-testid="stHorizontalBlock"] {
-    direction: rtl !important;
-}
-
-section[data-testid="stSidebar"] {
-    order: 2 !important;
-    direction: rtl !important;
-    text-align: right !important;
-    border-right: none !important;
-    border-left: 1px solid rgba(106, 132, 255, 0.20) !important;
-    box-shadow: -14px 0 60px rgba(0, 0, 0, 0.30) !important;
-}
-
-[data-testid="stAppViewContainer"] {
-    order: 1 !important;
-}
-
-section[data-testid="stSidebar"] [data-testid="stSidebarContent"],
-section[data-testid="stSidebar"] p,
-section[data-testid="stSidebar"] h1,
-section[data-testid="stSidebar"] h2,
-section[data-testid="stSidebar"] h3 {
-    direction: rtl !important;
-    text-align: right !important;
-}
-
-.topbar,
-.hero,
-.hero-copy,
-.section-copy,
-.card-title,
-.card-org,
-.card-number,
-.footer,
-.chips {
-    direction: rtl !important;
-    text-align: right !important;
-}
-
-.hero-chips,
-.chips {
-    justify-content: flex-start !important;
-}
-
-.hero-badge {
-    margin-left: auto !important;
-    margin-right: 0 !important;
-}
-
-input,
-textarea {
-    direction: rtl !important;
-    text-align: right !important;
-}
-
-div[data-baseweb="select"] {
-    direction: rtl !important;
-    text-align: right !important;
-}
-
-.stButton > button,
-.stFormSubmitButton > button {
-    text-align: center !important;
-}
-
-.stButton > button:active,
-.stFormSubmitButton > button:active {
-    transform: translateY(1px) scale(0.97) !important;
-}
-
-div[data-testid="stMetric"],
-div[data-testid="stMetricLabel"],
-div[data-testid="stMetricValue"] {
-    direction: rtl !important;
-    text-align: right !important;
-}
-
-details,
-details summary {
-    direction: rtl !important;
-    text-align: right !important;
-}
-
-@media (max-width: 900px) {
-    .block-container {
-        padding-left: 1.2rem !important;
-        padding-right: 1.2rem !important;
-    }
-}
-
 </style>
 """,
     unsafe_allow_html=True
 )
 
-
-
-# =========================================================
-# CURSOR CLICK EFFECT
-# =========================================================
-
-components.html(
-    """
-<script>
-(function () {
-    const doc = window.parent.document;
-
-    if (!doc.getElementById("helai-click-fx-style")) {
-        const style = doc.createElement("style");
-        style.id = "helai-click-fx-style";
-        style.textContent = `
-            .helai-click-ripple {
-                position: fixed;
-                width: 14px;
-                height: 14px;
-                border: 2px solid #42e5dd;
-                border-radius: 999px;
-                pointer-events: none;
-                z-index: 2147483647;
-                transform: translate(-50%, -50%) scale(.45);
-                box-shadow: 0 0 18px rgba(66, 229, 221, .55);
-                animation: helaiRipple .52s ease-out forwards;
-            }
-
-            @keyframes helaiRipple {
-                0% {
-                    opacity: .95;
-                    transform: translate(-50%, -50%) scale(.45);
-                }
-
-                100% {
-                    opacity: 0;
-                    transform: translate(-50%, -50%) scale(2.8);
-                }
-            }
-        `;
-        doc.head.appendChild(style);
-    }
-
-    if (!doc.documentElement.dataset.helaiClickFx) {
-        doc.documentElement.dataset.helaiClickFx = "1";
-
-        doc.addEventListener(
-            "pointerdown",
-            function (event) {
-                const ripple = doc.createElement("div");
-                ripple.className = "helai-click-ripple";
-                ripple.style.left = event.clientX + "px";
-                ripple.style.top = event.clientY + "px";
-                doc.body.appendChild(ripple);
-
-                window.setTimeout(function () {
-                    ripple.remove();
-                }, 560);
-            },
-            true
-        );
-    }
-})();
-</script>
-""",
-    height=0,
-    width=0,
-)
 
 
 # =========================================================
@@ -1859,23 +1477,23 @@ if not st.session_state.access_token:
         st.title("HELAI")
 
         st.caption(
-            "ئەیجێنتی زیرەکی دەستکردی فرەزمانی تۆ بۆ هەلی جیهانی."
+            "Your multilingual AI agent for global opportunities."
         )
 
         st.divider()
 
-        st.markdown("### HELAI چی دەکات")
+        st.markdown("### WHAT HELAI DOES")
 
-        st.write("٠١  لە ڕاگەیاندنی هەلەکان تێدەگات")
-        st.write("٠٢  پڕۆفایلێکی بەردەوام بۆ بەکارهێنەر دروست دەکات")
-        st.write("٠٣  گونجان و شایستەبوون دەپشکنێت")
-        st.write("٠٤  ئامادەیی بۆ داواکاری دەپێوێت")
-        st.write("٠٥  نیشان دەدات چی هەلی زیاتر دەکاتەوە")
+        st.write("01  Understands opportunity announcements")
+        st.write("02  Builds a persistent user profile")
+        st.write("03  Checks relevance and eligibility")
+        st.write("04  Measures application readiness")
+        st.write("05  Shows what can unlock more opportunities")
 
         st.divider()
 
-        st.caption("زانیاری هەژمارەکەت بە پارێزراوی لە Supabase هەڵدەگیرێت")
-        st.caption("ئۆڵمپیادی AI کوردستان ٢٠٢٦")
+        st.caption("Secure account data powered by Supabase")
+        st.caption("AI Olympiad Kurdistan 2026")
 
 
     st.html(
@@ -1887,7 +1505,7 @@ if not st.session_state.access_token:
     </div>
 
     <div>
-        ئەیجێنتی هەلی جیهانی / ٢٠٢٦
+        GLOBAL OPPORTUNITY AGENT / 2026
     </div>
 
 </div>
@@ -1900,47 +1518,48 @@ if not st.session_state.access_token:
 <section class="hero">
 
     <div class="hero-badge">
-        ● ئەیجێنتی هەلی جیهانی بە هێزی AI
+        ● AI-POWERED GLOBAL OPPORTUNITY AGENT
     </div>
 
     <h1 class="hero-title">
 
-        هەلی<br>
+        GLOBAL<br>
 
         <span class="gradient-word">
-            جیهانی.
+            OPPORTUNITIES.
         </span>
 
     </h1>
 
     <div class="hero-copy">
 
-        HelAI هەلەکان دەدۆزێتەوە و لێیان تێدەگات، مەرجە ئاڵۆزەکان
-        دەگۆڕێت بۆ زانیاریی ڕێکخراو، لەگەڵ پڕۆفایلەکەت بەراوردیان
-        دەکات و نیشانت دەدات بۆ چی شایستەیت و چی هێشتا پێویستتە.
+        HelAI discovers and understands opportunities, turns
+        complex requirements into structured information,
+        matches them with your profile and helps you understand
+        what you qualify for and what you still need.
 
     </div>
 
     <div class="hero-chips">
 
         <span class="hero-chip">
-            AI فرەزمان
+            MULTILINGUAL AI
         </span>
 
         <span class="hero-chip">
-            پڕۆفایلی هەور
+            CLOUD PROFILE
         </span>
 
         <span class="hero-chip">
-            شایستەبوون
+            ELIGIBILITY
         </span>
 
         <span class="hero-chip">
-            ئامادەیی
+            READINESS
         </span>
 
         <span class="hero-chip">
-            بەهێزکەری هەل
+            OPPORTUNITY BOOSTER
         </span>
 
     </div>
@@ -1955,19 +1574,19 @@ if not st.session_state.access_token:
 <div class="section">
 
     <div class="section-index">
-        هەژماری HELAI
+        HELAI ACCOUNT
     </div>
 
     <div class="section-title">
-        بچۆ ژوورەوە یان<br>
-        هەژمار دروست بکە.
+        SIGN IN OR<br>
+        CREATE ACCOUNT.
     </div>
 
     <div class="section-copy">
 
-        پڕۆفایلەکەت بە پارێزراوی لە هەور هەڵدەگیرێت بۆ ئەوەی
-        HelAI هەڵبژاردەکانی هەل و نیشانەکانی شایستەبوونت
-        لە هەموو جارێکی بەکارهێناندا بەردەست بگرێت.
+        Your profile is stored securely in the cloud so HelAI
+        can keep your opportunity preferences and eligibility
+        signals available across sessions.
 
     </div>
 
@@ -1978,8 +1597,8 @@ if not st.session_state.access_token:
 
     sign_in_tab, sign_up_tab = st.tabs(
         [
-            "چوونەژوورەوە",
-            "دروستکردنی هەژمار",
+            "SIGN IN",
+            "CREATE ACCOUNT",
         ]
     )
 
@@ -1989,17 +1608,17 @@ if not st.session_state.access_token:
         with st.form("helai_sign_in_form"):
 
             login_email = st.text_input(
-                "ئیمەیڵ",
+                "Email",
                 placeholder="you@example.com",
             )
 
             login_password = st.text_input(
-                "وشەی نهێنی",
+                "Password",
                 type="password",
             )
 
             login_submitted = st.form_submit_button(
-                "چوونەژوورەوە بۆ HELAI ←",
+                "SIGN IN TO HELAI →",
                 use_container_width=True,
             )
 
@@ -2009,12 +1628,12 @@ if not st.session_state.access_token:
             if not login_email.strip() or not login_password:
 
                 st.warning(
-                    "ئیمەیڵ و وشەی نهێنی بنووسە."
+                    "Enter your email and password."
                 )
 
             else:
 
-                with st.spinner("چوونەژوورەوە..."):
+                with st.spinner("Signing in..."):
 
                     login_result = sign_in_user(
                         email=login_email.strip(),
@@ -2047,7 +1666,7 @@ if not st.session_state.access_token:
                         )
 
                     st.success(
-                        "بە سەرکەوتوویی چوویتە ژوورەوە."
+                        "Signed in successfully."
                     )
 
                     st.rerun()
@@ -2055,7 +1674,7 @@ if not st.session_state.access_token:
                 else:
 
                     st.error(
-                        "چوونەژوورەوە سەرکەوتوو نەبوو. ئیمەیڵ و وشەی نهێنی بپشکنە."
+                        login_result["message"]
                     )
 
 
@@ -2064,29 +1683,29 @@ if not st.session_state.access_token:
         with st.form("helai_sign_up_form"):
 
             signup_name = st.text_input(
-                "ناوی تەواو",
-                placeholder="ناوی تەواوت",
+                "Full Name",
+                placeholder="Your full name",
             )
 
             signup_email = st.text_input(
-                "ئیمەیڵ",
+                "Email",
                 placeholder="you@example.com",
                 key="signup_email",
             )
 
             signup_password = st.text_input(
-                "وشەی نهێنی",
+                "Password",
                 type="password",
                 key="signup_password",
             )
 
             signup_password_confirm = st.text_input(
-                "دووبارەکردنەوەی وشەی نهێنی",
+                "Confirm Password",
                 type="password",
             )
 
             signup_submitted = st.form_submit_button(
-                "هەژماری HELAI دروست بکە ←",
+                "CREATE HELAI ACCOUNT →",
                 use_container_width=True,
             )
 
@@ -2096,30 +1715,30 @@ if not st.session_state.access_token:
             if not signup_name.strip():
 
                 st.warning(
-                    "ناوی تەواوت بنووسە."
+                    "Enter your full name."
                 )
 
             elif not signup_email.strip():
 
                 st.warning(
-                    "ئیمەیڵەکەت بنووسە."
+                    "Enter your email."
                 )
 
             elif len(signup_password) < 6:
 
                 st.warning(
-                    "وشەی نهێنییەک بە لانیکەم ٦ پیت/ژمارە بەکاربهێنە."
+                    "Use a password with at least 6 characters."
                 )
 
             elif signup_password != signup_password_confirm:
 
                 st.warning(
-                    "دوو وشەی نهێنییەکە یەک ناگرنەوە."
+                    "The two passwords do not match."
                 )
 
             else:
 
-                with st.spinner("هەژماری HELAI دروست دەکرێت..."):
+                with st.spinner("Creating your HelAI account..."):
 
                     signup_result = sign_up_user(
                         email=signup_email.strip(),
@@ -2152,7 +1771,7 @@ if not st.session_state.access_token:
                         load_cloud_profile()
 
                         st.success(
-                            "هەژمار دروست کرا و چوویتە ژوورەوە."
+                            "Account created and signed in."
                         )
 
                         st.rerun()
@@ -2171,7 +1790,7 @@ if not st.session_state.access_token:
                 else:
 
                     st.error(
-                        "دروستکردنی هەژمار سەرکەوتوو نەبوو. زانیارییەکان بپشکنە و دووبارە هەوڵ بدە."
+                        signup_result["message"]
                     )
 
 
@@ -2198,8 +1817,8 @@ if st.session_state.cloud_profile is None:
     else:
 
         st.warning(
-            "چوویتە ژوورەوە، بەڵام HelAI نەیتوانی پڕۆفایلی هەورت بار بکات. "
-            "پەڕەکە نوێ بکەرەوە و دووبارە هەوڵ بدە."
+            "You are signed in, but HelAI could not load your "
+            "cloud profile. You can still try again by reloading."
         )
 
 
@@ -2212,13 +1831,13 @@ with st.sidebar:
     st.title("HELAI")
 
     st.caption(
-        "ئەیجێنتی AI ـی تۆ بۆ دۆزینەوەی هەلی جیهانی، "
-        "گونجان و ئامادەیی."
+        "Your AI agent for global opportunity discovery, "
+        "matching and readiness."
     )
 
     st.divider()
 
-    st.markdown("### هەژمار")
+    st.markdown("### ACCOUNT")
 
     account_email = ""
 
@@ -2251,13 +1870,13 @@ with st.sidebar:
             "profile_complete",
             False,
         ):
-            st.success("پڕۆفایلی هەور ئامادەیە")
+            st.success("Cloud profile ready")
         else:
-            st.info("پڕۆفایلەکەت لە خوارەوە تەواو بکە")
+            st.info("Complete your profile below")
 
 
     if st.button(
-        "چوونەدەرەوە",
+        "LOG OUT",
         use_container_width=True,
         key="logout_button",
     ):
@@ -2274,23 +1893,23 @@ with st.sidebar:
 
     st.divider()
 
-    st.markdown("### سیستەم")
+    st.markdown("### SYSTEM")
 
-    st.write("٠١  دەرهێنانی زانیاری بە AI")
-    st.write("٠٢  پڕۆفایلی هەور")
-    st.write("٠٣  گونجانی پەیوەندی")
-    st.write("٠٤  شایستەبوون")
-    st.write("٠٥  ئامادەیی")
-    st.write("٠٦  بەهێزکەری هەل")
+    st.write("01  AI extraction")
+    st.write("02  Cloud profile")
+    st.write("03  Relevance matching")
+    st.write("04  Eligibility")
+    st.write("05  Readiness")
+    st.write("06  Opportunity Booster")
 
     st.divider()
 
     st.caption(
-        f"{len(opportunities)} هەل بارکرا"
+        f"{len(opportunities)} opportunities loaded"
     )
 
     st.caption(
-        "ئۆڵمپیادی AI کوردستان ٢٠٢٦"
+        "AI Olympiad Kurdistan 2026"
     )
 
 
@@ -2307,7 +1926,7 @@ st.html(
     </div>
 
     <div>
-        ئەیجێنتی هەلی جیهانی / ٢٠٢٦
+        GLOBAL OPPORTUNITY AGENT / 2026
     </div>
 
 </div>
@@ -2324,48 +1943,49 @@ st.html(
 <section class="hero">
 
     <div class="hero-badge">
-        ● زیرەکی هەلی جیهانی بە هێزی AI
+        ● AI-POWERED GLOBAL OPPORTUNITY INTELLIGENCE
     </div>
 
     <h1 class="hero-title">
 
-        ئەوە بدۆزەوە<br>
+        FIND WHAT<br>
 
         <span class="gradient-word">
-            کە بۆ تۆیە.
+            FITS YOU.
         </span>
 
     </h1>
 
     <div class="hero-copy">
 
-        HelAI ڕاگەیاندنی هەلە جیهانییەکان دەگۆڕێت بۆ ئەنجامی
-        تایبەت بە تۆ. لە مەرجەکان تێدەگات، لەگەڵ پڕۆفایلی
-        هەڵگیراوت بەراوردیان دەکات و نیشانت دەدات چی دەگونجێت،
-        بۆ چی شایستەیت و پێش داواکردن چی هێشتا پێویستتە.
+        HelAI turns global opportunity announcements into
+        personalized decisions. It understands requirements,
+        compares them with your saved profile and tells you
+        what matches, what you qualify for and what you still
+        need before applying.
 
     </div>
 
     <div class="hero-chips">
 
         <span class="hero-chip">
-            AI فرەزمان
+            MULTILINGUAL AI
         </span>
 
         <span class="hero-chip">
-            پڕۆفایلی هەور
+            CLOUD PROFILE
         </span>
 
         <span class="hero-chip">
-            نمرەی گونجان
+            MATCH SCORE
         </span>
 
         <span class="hero-chip">
-            شایستەبوون
+            ELIGIBILITY
         </span>
 
         <span class="hero-chip">
-            بەهێزکەری هەل
+            OPPORTUNITY BOOSTER
         </span>
 
     </div>
@@ -2384,20 +2004,20 @@ st.html(
 <div class="section">
 
     <div class="section-index">
-        ٠١ / هاوردەکردن بە AI
+        01 / AI IMPORT
     </div>
 
     <div class="section-title">
-        هەر هەلێک<br>
-        لێرە دابنێ.
+        PASTE ANY<br>
+        OPPORTUNITY.
     </div>
 
     <div class="section-copy">
 
-        هەلێک لە فەیسبووک، تێلەگرام، ماڵپەڕ، ئیمەیڵ یان
-        هەر سەرچاوەیەکی تر کۆپی بکە. دەکرێت بە کوردی،
-        عەرەبی، ئینگلیزی یان تێکەڵ بێت. AI ڕاگەیاندنەکە
-        دەگۆڕێت بۆ مەرج و زانیاریی ڕێکخراو.
+        Copy an opportunity from Facebook, Telegram,
+        a website, email or another source. It can be
+        Kurdish, Arabic, English or mixed. The AI converts
+        the announcement into structured requirements.
 
     </div>
 
@@ -2407,30 +2027,30 @@ st.html(
 
 
 announcement_text = st.text_area(
-    "ڕاگەیاندنی هەل",
+    "Opportunity announcement",
     height=230,
     placeholder=(
-        "دەقی بورس، پێشبڕکێ، ڕاهێنان، کارفێرکاری، "
-        "فێلۆشیپ یان گرانت لێرە دابنێ..."
+        "Paste a scholarship, competition, training, "
+        "internship, fellowship or grant announcement..."
     )
 )
 
 
 if st.button(
-    "بە AI شیکاری بکە ←",
+    "ANALYZE WITH AI →",
     use_container_width=True
 ):
 
     if not announcement_text.strip():
 
         st.warning(
-            "سەرەتا ڕاگەیاندنی هەلێک لێرە دابنێ."
+            "Please paste an opportunity announcement first."
         )
 
     else:
 
         with st.spinner(
-            "AI ڕاگەیاندنەکە شیکار دەکات..."
+            "AI is understanding the announcement..."
         ):
 
             try:
@@ -2444,13 +2064,13 @@ if st.button(
                 )
 
                 st.success(
-                    "دەرهێنانی زانیاری بە AI بە سەرکەوتوویی تەواو بوو."
+                    "AI extraction completed successfully."
                 )
 
             except Exception as error:
 
                 st.error(
-                    f"دەرهێنانی زانیاری بە AI سەرکەوتوو نەبوو: {error}"
+                    f"AI extraction failed: {error}"
                 )
 
 
@@ -2468,7 +2088,7 @@ if st.session_state.ai_imported_opportunity:
         str(
             extracted.get(
                 "title",
-                "هەلی هاوردەکراو بە AI"
+                "AI Imported Opportunity"
             )
         )
     )
@@ -2488,7 +2108,7 @@ if st.session_state.ai_imported_opportunity:
 <div class="card">
 
     <div class="card-number">
-        دەرهێنانی AI / تەواو
+        AI EXTRACTION / COMPLETE
     </div>
 
     <div class="card-title">
@@ -2500,7 +2120,7 @@ if st.session_state.ai_imported_opportunity:
     </div>
 
     <div class="ai-tag">
-        لە دەقی ڕێکنەخراو دروست کراوە
+        GENERATED FROM UNSTRUCTURED TEXT
     </div>
 
 </div>
@@ -2514,29 +2134,29 @@ if st.session_state.ai_imported_opportunity:
     with a1:
 
         st.metric(
-            "جۆر",
-            ku_value(extracted.get(
+            "Type",
+            extracted.get(
                 "type",
                 ""
-            ))
+            )
         )
 
 
     with a2:
 
         st.metric(
-            "دۆخ",
-            ku_value(extracted.get(
+            "Status",
+            extracted.get(
                 "status",
                 ""
-            ))
+            )
         )
 
 
     with a3:
 
         st.metric(
-            "شوێن",
+            "Location",
             extracted.get(
                 "location",
                 ""
@@ -2547,11 +2167,11 @@ if st.session_state.ai_imported_opportunity:
     with a4:
 
         st.metric(
-            "دوا وادە",
+            "Deadline",
             extracted.get(
                 "deadline",
                 ""
-            ) or "دیاری نەکراوە"
+            ) or "Not stated"
         )
 
 
@@ -2564,16 +2184,14 @@ if st.session_state.ai_imported_opportunity:
     with ex1:
 
         st.markdown(
-            "### زانیاریی شایستەبوون"
+            "### ELIGIBILITY DATA"
         )
 
         st.write(
-            "**خوێندن:**",
-            ku_value(
-                extracted.get(
-                    "education",
-                    "Any"
-                )
+            "**Education:**",
+            extracted.get(
+                "education",
+                "Any"
             )
         )
 
@@ -2583,11 +2201,11 @@ if st.session_state.ai_imported_opportunity:
         )
 
         st.write(
-            "**یاسای خوێندن:**",
+            "**Education rule:**",
             (
-                "ئاستی دیاریکراو"
+                "Exact target level"
                 if education_rule == "exact"
-                else "کەمترین ئاست"
+                else "Minimum level"
             )
         )
 
@@ -2605,11 +2223,11 @@ if st.session_state.ai_imported_opportunity:
         ):
 
             st.write(
-                "**تەمەن:**",
+                "**Age:**",
                 (
-                    f"{minimum_age if minimum_age is not None else 'بێ سنووری خوارەوە'}"
+                    f"{minimum_age if minimum_age is not None else 'No minimum'}"
                     f" — "
-                    f"{maximum_age if maximum_age is not None else 'بێ سنووری سەرەوە'}"
+                    f"{maximum_age if maximum_age is not None else 'No maximum'}"
                 )
             )
 
@@ -2619,8 +2237,8 @@ if st.session_state.ai_imported_opportunity:
         )
 
         st.write(
-            "**نیشتەجێبوون:**",
-            ku_value(residency) if residency else "هیچ شتێک نەدۆزرایەوە"
+            "**Residency:**",
+            residency or "None detected"
         )
 
         minimum_grade = extracted.get(
@@ -2631,7 +2249,7 @@ if st.session_state.ai_imported_opportunity:
         if minimum_grade:
 
             st.write(
-                "**کەمترین نمرە:**",
+                "**Minimum grade:**",
                 f"{minimum_grade}%"
             )
 
@@ -2643,45 +2261,45 @@ if st.session_state.ai_imported_opportunity:
         if required_work:
 
             st.write(
-                "**ئەزموونی کار:**",
-                f"{required_work} ساڵ"
+                "**Work experience:**",
+                f"{required_work} years"
             )
 
 
     with ex2:
 
         st.markdown(
-            "### نیشانەکانی پڕۆفایل"
+            "### PROFILE SIGNALS"
         )
 
         st.write(
-            "**زمانەکان:**",
-            ku_list(
+            "**Languages:**",
+            ", ".join(
                 extracted.get(
                     "languages",
                     []
                 )
-            ) or "دیاری نەکراوە"
+            ) or "None specified"
         )
 
         st.write(
-            "**بوارەکانی حەز:**",
-            ku_list(
+            "**Interests:**",
+            ", ".join(
                 extracted.get(
                     "interests",
                     []
                 )
-            ) or "دیاری نەکراوە"
+            ) or "None specified"
         )
 
         st.write(
-            "**تواناکان:**",
-            ku_list(
+            "**Skills:**",
+            ", ".join(
                 extracted.get(
                     "skills",
                     []
                 )
-            ) or "دیاری نەکراوە"
+            ) or "None specified"
         )
 
         required_docs = []
@@ -2719,17 +2337,17 @@ if st.session_state.ai_imported_opportunity:
             )
 
         st.write(
-            "**بەڵگەنامە پێویستەکان:**",
+            "**Required documents:**",
             (
-                ku_list(required_docs)
+                ", ".join(required_docs)
                 if required_docs
-                else "هیچ شتێک نەدۆزرایەوە"
+                else "None detected"
             )
         )
 
 
     with st.expander(
-        "بینینی داتای خاو"
+        "VIEW RAW AI DATA"
     ):
 
         st.json(
@@ -2750,19 +2368,20 @@ st.html(
 <div class="section">
 
     <div class="section-index">
-        02 / پڕۆفایلی هەور
+        02 / CLOUD PROFILE
     </div>
 
     <div class="section-title">
-        پڕۆفایلەکەت<br>
-        تەواو بکە.
+        BUILD YOUR<br>
+        SIGNAL.
     </div>
 
     <div class="section-copy">
 
-        پڕۆفایلەکەت لە Supabase هەڵدەگیرێت. HelAI خوێندن،
-        شوێنی نیشتەجێبوون، زمان، توانا، بوارەکانی حەز،
-        ئەزموون و بەڵگەنامەکانت وەک نیشانەی گونجان بەکاردەهێنێت.
+        Your profile is saved in Supabase. HelAI uses your
+        education, residence, languages, skills, interests,
+        experience and application documents as matching
+        signals.
 
     </div>
 
@@ -2770,10 +2389,10 @@ st.html(
 
 <div class="explainer">
 
-    <strong>گونجان</strong> پەیوەندی هەلەکە بە تۆ دەپێوێت.
-    <strong>شایستەبوون</strong> مەرجە ناچارییەکان دەپشکنێت.
-    <strong>ئامادەیی</strong> دەپشکنێت ئایا بەڵگەنامە پێویستەکان
-    بۆ داواکردن ئامادەن یان نا.
+    <strong>MATCH</strong> measures relevance.
+    <strong>ELIGIBILITY</strong> checks mandatory rules.
+    <strong>READINESS</strong> checks whether the documents
+    needed to apply are already available.
 
 </div>
 """
@@ -2892,16 +2511,16 @@ with st.form(
     with left:
 
         full_name = st.text_input(
-            "ناوی تەواو",
+            "Full Name",
             value=(
                 saved_profile.get("full_name")
                 or ""
             ),
-            placeholder="ناوی تەواوت",
+            placeholder="Your full name",
         )
 
         date_of_birth = st.date_input(
-            "بەرواری لەدایکبوون",
+            "Date of Birth",
             value=saved_dob,
             min_value=date(1940, 1, 1),
             max_value=date.today(),
@@ -2910,32 +2529,31 @@ with st.form(
         if date_of_birth:
 
             st.caption(
-                f"تەمەنی بەکارهاتوو بۆ گونجان: "
+                f"Age used for matching: "
                 f"{calculate_age(date_of_birth)}"
             )
 
         nationality = st.text_input(
-            "نەتەوەیی",
+            "Nationality",
             value=(
                 saved_profile.get("nationality")
                 or ""
             ),
-            placeholder="نموونە: عێراقی",
+            placeholder="Example: Iraqi",
         )
 
         country_of_residence = st.text_input(
-            "وڵاتی نیشتەجێبوون",
+            "Country of Residence",
             value=(
                 saved_profile.get("country_of_residence")
                 or ""
             ),
-            placeholder="نموونە: عێراق",
+            placeholder="Example: Iraq",
         )
 
         city = st.selectbox(
-            "شار / نیشتەجێبوون",
+            "City / Residence",
             city_options,
-            format_func=ku_value,
             index=safe_index(
                 city_options,
                 saved_profile.get("city"),
@@ -2944,9 +2562,8 @@ with st.form(
         )
 
         education = st.selectbox(
-            "بەرزترین ئاستی خوێندن",
+            "Highest Education Level",
             education_options,
-            format_func=ku_value,
             index=safe_index(
                 education_options,
                 saved_profile.get("education"),
@@ -2955,16 +2572,16 @@ with st.form(
         )
 
         field_of_study = st.text_input(
-            "بواری خوێندن",
+            "Field of Study",
             value=(
                 saved_profile.get("field_of_study")
                 or ""
             ),
-            placeholder="نموونە: زانستی کۆمپیوتەر",
+            placeholder="Example: Computer Science",
         )
 
         grade = st.number_input(
-            "ناوەندی دەرچوون / ڕێژە",
+            "Graduation Average / Percentage",
             min_value=0.0,
             max_value=100.0,
             value=float(
@@ -2975,7 +2592,7 @@ with st.form(
         )
 
         work_experience_years = st.number_input(
-            "ساڵانی ئەزموونی کار",
+            "Years of Work Experience",
             min_value=0.0,
             max_value=50.0,
             value=float(
@@ -2991,10 +2608,8 @@ with st.form(
     with right:
 
         languages = st.multiselect(
-            "زمانەکان",
+            "Languages",
             language_options,
-            format_func=ku_value,
-            placeholder="هەڵبژێرە",
             default=safe_multiselect_defaults(
                 language_options,
                 saved_profile.get("languages"),
@@ -3002,10 +2617,8 @@ with st.form(
         )
 
         skills = st.multiselect(
-            "تواناکان",
+            "Skills",
             skill_options,
-            format_func=ku_value,
-            placeholder="هەڵبژێرە",
             default=safe_multiselect_defaults(
                 skill_options,
                 saved_profile.get("skills"),
@@ -3013,10 +2626,8 @@ with st.form(
         )
 
         interests = st.multiselect(
-            "بوارەکانی حەز",
+            "Areas of Interest",
             interest_options,
-            format_func=ku_value,
-            placeholder="هەڵبژێرە",
             default=safe_multiselect_defaults(
                 interest_options,
                 saved_profile.get("interests"),
@@ -3024,10 +2635,8 @@ with st.form(
         )
 
         opportunity_types = st.multiselect(
-            "جۆرەکانی هەل",
+            "Opportunity Types",
             opportunity_type_options,
-            format_func=ku_value,
-            placeholder="هەڵبژێرە",
             default=safe_multiselect_defaults(
                 opportunity_type_options,
                 saved_profile.get(
@@ -3037,9 +2646,8 @@ with st.form(
         )
 
         preferred_language = st.selectbox(
-            "زمانی پەسەندکراوی HelAI",
+            "Preferred HelAI Language",
             preferred_language_options,
-            format_func=ku_value,
             index=safe_index(
                 preferred_language_options,
                 saved_profile.get(
@@ -3050,7 +2658,7 @@ with st.form(
         )
 
         email_notifications = st.checkbox(
-            "کاتێک HelAI هەلی گونجاو دەدۆزێتەوە بە ئیمەیڵ ئاگادارم بکەرەوە",
+            "Email me when HelAI finds relevant opportunities",
             value=bool(
                 saved_profile.get(
                     "email_notifications",
@@ -3060,11 +2668,11 @@ with st.form(
         )
 
         st.markdown(
-            "### بەڵگەنامەکان"
+            "### DOCUMENTS"
         )
 
         has_passport = st.checkbox(
-            "پاسپۆرتێکی دروستم هەیە",
+            "I have a valid passport",
             value=bool(
                 saved_profile.get(
                     "has_passport",
@@ -3074,7 +2682,7 @@ with st.form(
         )
 
         has_ielts = st.checkbox(
-            "بڕوانامەی IELTS / ئینگلیزیم هەیە",
+            "I have IELTS / English certificate",
             value=bool(
                 saved_profile.get(
                     "has_ielts",
@@ -3084,7 +2692,7 @@ with st.form(
         )
 
         has_portfolio = st.checkbox(
-            "پۆرتفۆلیۆم هەیە",
+            "I have a portfolio",
             value=bool(
                 saved_profile.get(
                     "has_portfolio",
@@ -3094,7 +2702,7 @@ with st.form(
         )
 
         has_cv = st.checkbox(
-            "سیڤیم هەیە",
+            "I have a CV",
             value=bool(
                 saved_profile.get(
                     "has_cv",
@@ -3105,7 +2713,7 @@ with st.form(
 
 
     submitted = st.form_submit_button(
-        "پڕۆفایل هەڵبگرە + شیکاری بکە ←",
+        "SAVE PROFILE + ANALYZE →",
         use_container_width=True,
     )
 
@@ -3125,13 +2733,13 @@ if submitted:
     if not full_name.strip():
 
         st.warning(
-            "تکایە ناوی تەواوت بنووسە."
+            "Please enter your full name."
         )
 
     elif date_of_birth is None:
 
         st.warning(
-            "تکایە بەرواری لەدایکبوونت دیاری بکە."
+            "Please enter your date of birth."
         )
 
     else:
@@ -3165,7 +2773,7 @@ if submitted:
 
 
         with st.spinner(
-            "پڕۆفایلی هەوری HelAI هەڵدەگیرێت..."
+            "Saving your HelAI cloud profile..."
         ):
 
             save_result = update_profile(
@@ -3178,7 +2786,8 @@ if submitted:
         if not save_result["success"]:
 
             st.error(
-                "HelAI نەیتوانی پڕۆفایلەکەت هەڵبگرێت. تکایە دووبارە هەوڵ بدە."
+                "HelAI could not save your profile: "
+                f"{save_result['message']}"
             )
 
         else:
@@ -3203,7 +2812,7 @@ if submitted:
 
 
             st.success(
-                "پڕۆفایلەکەت بە سەرکەوتوویی لە Supabase هەڵگیرا."
+                "Profile saved to Supabase successfully."
             )
 
 
@@ -3243,7 +2852,7 @@ if submitted:
 
                 ai_opportunity[
                     "source"
-                ] = "ڕاگەیاندنی هاوردەکراو بە AI"
+                ] = "AI imported announcement"
 
                 ai_opportunity[
                     "is_ai_imported"
@@ -3299,19 +2908,19 @@ if run_matching:
 <div class="section">
 
     <div class="section-index">
-        ٠٣ / نەخشەی هەلەکان
+        03 / OPPORTUNITY MAP
     </div>
 
     <div class="section-title">
-        باشترین<br>
-        هەڵبژاردەکانت.
+        YOUR BEST<br>
+        OPTIONS.
     </div>
 
     <div class="section-copy">
 
-        سیستەم گونجان لە شایستەبوون جیا دەکاتەوە.
-        هەلێک ڕەنگە زۆر لەگەڵت بگونجێت، بەڵام ئەگەر
-        مەرجێکی ناچاری کەم بێت، وەک ناشایستە نیشان بدرێت.
+        The system separates relevance from qualification.
+        A highly relevant opportunity can still show as
+        not eligible when a mandatory requirement is missing.
 
     </div>
 
@@ -3372,7 +2981,7 @@ if run_matching:
     with m1:
 
         st.metric(
-            "هەلە کراوەکان",
+            "Open Opportunities",
             open_count
         )
 
@@ -3380,7 +2989,7 @@ if run_matching:
     with m2:
 
         st.metric(
-            "ئێستا شایستەیت",
+            "Eligible Now",
             eligible_count
         )
 
@@ -3388,7 +2997,7 @@ if run_matching:
     with m3:
 
         st.metric(
-            "ئامادەی داواکردن",
+            "Ready to Apply",
             ready_count
         )
 
@@ -3396,7 +3005,7 @@ if run_matching:
     with m4:
 
         st.metric(
-            "باشترین گونجان",
+            "Best Match",
             f"{best_score}%"
         )
 
@@ -3421,7 +3030,7 @@ if run_matching:
             str(
                 opportunity.get(
                     "title",
-                    "هەلی بێ ناونیشان"
+                    "Untitled Opportunity"
                 )
             )
         )
@@ -3474,7 +3083,7 @@ if run_matching:
 
             ai_tag = (
                 '<div class="ai-tag">'
-                'بە AI هاوردەکراو'
+                'AI IMPORTED'
                 '</div>'
             )
 
@@ -3484,7 +3093,7 @@ if run_matching:
 <div class="{card_class}">
 
     <div class="card-number">
-        {index:02d} / هەل
+        {index:02d} / OPPORTUNITY
     </div>
 
     <div class="card-title">
@@ -3626,7 +3235,7 @@ if run_matching:
 
 
             st.markdown(
-                "#### دەربارەی ئەم هەلە"
+                "#### ABOUT THIS OPPORTUNITY"
             )
 
 
@@ -3641,7 +3250,7 @@ if run_matching:
         with c1:
 
             st.metric(
-                "گونجان",
+                "Match",
                 f"{result['score']}%"
             )
 
@@ -3649,11 +3258,11 @@ if run_matching:
         with c2:
 
             st.metric(
-                "شایستەبوون",
+                "Eligibility",
                 (
-                    "شایستە"
+                    "Eligible"
                     if result["eligible"]
-                    else "ناشایستە"
+                    else "Not Eligible"
                 )
             )
 
@@ -3661,7 +3270,7 @@ if run_matching:
         with c3:
 
             st.metric(
-                "ئامادەیی",
+                "Readiness",
                 f"{result['readiness']}%"
             )
 
@@ -3669,18 +3278,18 @@ if run_matching:
         with c4:
 
             st.metric(
-                "دوا وادە",
+                "Deadline",
                 opportunity.get(
                     "deadline",
                     ""
-                ) or "دیاری نەکراوە"
+                ) or "Not stated"
             )
 
 
         st.progress(
             result["score"] / 100,
             text=(
-                f"گونجانی هەل · "
+                f"Match relevance · "
                 f"{result['score']}%"
             )
         )
@@ -3689,7 +3298,7 @@ if run_matching:
         st.progress(
             result["readiness"] / 100,
             text=(
-                f"ئامادەیی بۆ داواکردن · "
+                f"Application readiness · "
                 f"{result['readiness']}%"
             )
         )
@@ -3727,15 +3336,15 @@ if run_matching:
 <div class="chips">
 
     <span class="chip {status_class}">
-        {html.escape(ku_value(status))}
+        {html.escape(str(status))}
     </span>
 
     <span class="chip {eligibility_class}">
-        {"شایستە" if result["eligible"] else "ناشایستە"}
+        {"ELIGIBLE" if result["eligible"] else "NOT ELIGIBLE"}
     </span>
 
     <span class="chip {readiness_class}">
-        ئامادەیی {result["readiness"]}%
+        READY {result["readiness"]}%
     </span>
 
 </div>
@@ -3749,23 +3358,24 @@ if run_matching:
         ):
 
             st.success(
-                "وا دیارە شایستەیت و بۆ داواکردن ئامادەیت."
+                "You appear eligible and ready to apply."
             )
 
 
         elif result["eligible"]:
 
             st.info(
-                "وا دیارە شایستەیت، بەڵام هێشتا هەندێک هەنگاوی ئامادەکاری ماوە."
+                "You appear eligible, but there are "
+                "application-readiness tasks remaining."
             )
 
 
         else:
 
             st.warning(
-                "ئەم هەلە ڕەنگە لەگەڵت بگونجێت، "
-                "بەڵام ئێستا یەک یان زیاتر لە "
-                "مەرجە ناچارییەکانی شایستەبوونت کەمە."
+                "This opportunity may be relevant, "
+                "but you currently miss one or more "
+                "mandatory eligibility requirements."
             )
 
 
@@ -3780,7 +3390,7 @@ if run_matching:
         with why_col:
 
             st.markdown(
-                "### بۆچی لەگەڵت دەگونجێت"
+                "### WHY IT FITS"
             )
 
             if result["reasons"]:
@@ -3788,20 +3398,20 @@ if run_matching:
                 for reason in result["reasons"]:
 
                     st.write(
-                        f"＋ {ku_match_text(reason)}"
+                        f"＋ {reason}"
                     )
 
             else:
 
                 st.caption(
-                    "هیچ نیشانەیەکی گونجاوی ئەرێنی نییە."
+                    "No positive matching signals."
                 )
 
 
         with eligibility_col:
 
             st.markdown(
-                "### شایستەبوون"
+                "### ELIGIBILITY"
             )
 
             if result["eligibility_gaps"]:
@@ -3811,20 +3421,20 @@ if run_matching:
                 ]:
 
                     st.write(
-                        f"— {ku_match_text(issue)}"
+                        f"— {issue}"
                     )
 
             else:
 
                 st.success(
-                    "هیچ کەموکوڕییەکی ناچاری لە شایستەبووندا نییە."
+                    "No mandatory eligibility gaps."
                 )
 
 
         with readiness_col:
 
             st.markdown(
-                "### ئامادەیی"
+                "### READINESS"
             )
 
             if result["readiness_gaps"]:
@@ -3834,32 +3444,30 @@ if run_matching:
                 ]:
 
                     st.write(
-                        f"— {ku_match_text(issue)}"
+                        f"— {issue}"
                     )
 
             else:
 
                 st.success(
-                    "هیچ بەڵگەنامەی پێویست کەم نییە."
+                    "No tracked document gaps."
                 )
 
 
         with st.expander(
-            "بینینی وردەکاریی هەل"
+            "VIEW OPPORTUNITY DETAILS"
         ):
 
             st.write(
-                "**جۆر:**",
-                ku_value(
-                    opportunity.get(
-                        "type",
-                        ""
-                    )
+                "**Type:**",
+                opportunity.get(
+                    "type",
+                    ""
                 )
             )
 
             st.write(
-                "**شوێن:**",
+                "**Location:**",
                 opportunity.get(
                     "location",
                     ""
@@ -3867,24 +3475,18 @@ if run_matching:
             )
 
             st.write(
-                "**خوێندن:**",
-                ku_value(
-                    opportunity.get(
-                        "education",
-                        "Any"
-                    )
+                "**Education:**",
+                opportunity.get(
+                    "education",
+                    "Any"
                 )
             )
 
             st.write(
-                "**یاسای خوێندن:**",
-                (
-                    "ئاستی دیاریکراو"
-                    if opportunity.get(
-                        "education_rule",
-                        "minimum"
-                    ) == "exact"
-                    else "کەمترین ئاست"
+                "**Education rule:**",
+                opportunity.get(
+                    "education_rule",
+                    "minimum"
                 )
             )
 
@@ -3894,8 +3496,8 @@ if run_matching:
             )
 
             st.write(
-                "**مەرجی نیشتەجێبوون:**",
-                ku_value(residency) if residency else "دیاری نەکراوە"
+                "**Residency requirement:**",
+                residency or "None specified"
             )
 
             notes = opportunity.get(
@@ -3906,7 +3508,7 @@ if run_matching:
             if notes:
 
                 st.write(
-                    "**تێبینی:**",
+                    "**Notes:**",
                     notes
                 )
 
@@ -3918,7 +3520,7 @@ if run_matching:
             if source:
 
                 st.write(
-                    "**سەرچاوە:**",
+                    "**Source:**",
                     source
                 )
 
@@ -3935,19 +3537,19 @@ if run_matching:
 <div class="section">
 
     <div class="section-index">
-        04 / بەهێزکەری هەل
+        04 / OPPORTUNITY BOOSTER
     </div>
 
     <div class="section-title">
-        هەلی زیاتر<br>
-        بکەرەوە.
+        UNLOCK<br>
+        MORE.
     </div>
 
     <div class="section-copy">
 
-        بەهێزکەری هەل گۆڕانکارییەکانی پڕۆفایلەکەت تاقی دەکاتەوە
-        و دیاری دەکات کام هەنگاو دەتوانێت هەلی زیاتر بکاتەوە
-        یان ئامادەییت بۆ داواکردن زیاد بکات.
+        Opportunity Booster simulates improvements to your
+        profile and identifies which actions could unlock
+        more opportunities or increase application readiness.
 
     </div>
 
@@ -3974,7 +3576,7 @@ if run_matching:
 
 
             safe_label = html.escape(
-                ku_booster_label(
+                str(
                     label
                 )
             )
@@ -3985,7 +3587,7 @@ if run_matching:
 <div class="card">
 
     <div class="card-number">
-        پێشنیار / {rank:02d}
+        BOOST / {rank:02d}
     </div>
 
     <div class="card-title">
@@ -4003,7 +3605,7 @@ if run_matching:
             with b1:
 
                 st.metric(
-                    "کراوەوە",
+                    "Unlocked",
                     data["unlocked"]
                 )
 
@@ -4011,7 +3613,7 @@ if run_matching:
             with b2:
 
                 st.metric(
-                    "باشترکراو",
+                    "Improved",
                     data["improved"]
                 )
 
@@ -4019,7 +3621,7 @@ if run_matching:
             with b3:
 
                 st.metric(
-                    "زیادبوونی گونجان",
+                    "Match Gain",
                     f"+{data['score_gain']}"
                 )
 
@@ -4027,7 +3629,7 @@ if run_matching:
             with b4:
 
                 st.metric(
-                    "زیادبوونی ئامادەیی",
+                    "Readiness Gain",
                     f"+{data['readiness_gain']}"
                 )
 
@@ -4035,8 +3637,8 @@ if run_matching:
     else:
 
         st.success(
-            "پڕۆفایلەکەت هەموو ئەو باشترکردنانەی "
-            "ئەم نموونەیە تاقی دەکاتەوە، لەخۆگرتووە."
+            "Your profile already covers all "
+            "improvements tested by this prototype."
         )
 
 
@@ -4049,11 +3651,11 @@ st.html(
 <div class="footer">
 
     <div>
-        HELAI / نموونەی سەرەتایی
+        HELAI / PROTOTYPE
     </div>
 
     <div>
-        ئۆڵمپیادی AI کوردستان / ٢٠٢٦
+        AI OLYMPIAD KURDISTAN / 2026
     </div>
 
 </div>
