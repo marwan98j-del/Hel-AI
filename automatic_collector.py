@@ -1,7 +1,8 @@
 import time
 
 from collector_client import collector_supabase
-from collector_service import analyze_and_save
+from collector_service import analyze_and_save, find_existing_opportunity
+from opportunity_rules import normalize_url
 from opportunity_desk_article import extract_article
 from opportunity_desk_discovery import discover_opportunities
 
@@ -22,17 +23,12 @@ DELAY_BETWEEN_ARTICLES = 1
 # =========================================================
 
 def already_imported(source_url):
-
-    response = (
-        collector_supabase
-        .table("opportunities")
-        .select("id,title")
-        .eq("source_url", source_url)
-        .limit(1)
-        .execute()
+    return bool(
+        find_existing_opportunity(
+            {"source_url": normalize_url(source_url)},
+            client=collector_supabase,
+        )
     )
-
-    return bool(response.data)
 
 
 # =========================================================

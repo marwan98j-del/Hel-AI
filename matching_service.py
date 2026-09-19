@@ -5,6 +5,12 @@ from dotenv import load_dotenv
 from supabase import create_client
 
 from matcher import calculate_match
+from opportunity_rules import (
+    APPLICANT_INDIVIDUAL,
+    RECORD_KIND_APPLICATION,
+    effective_status,
+    normalize_record_kind,
+)
 
 
 load_dotenv(override=True)
@@ -12,6 +18,27 @@ load_dotenv(override=True)
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SECRET_KEY")
+
+# Compatibility stays enabled until record_kind has been backfilled and
+# reviewed. Flip this only in a separately reviewed activation change.
+REQUIRE_APPLICATION_RECORD_KIND = False
+
+
+def opportunity_is_actionable(
+    opportunity,
+    require_application_record_kind=REQUIRE_APPLICATION_RECORD_KIND,
+    reference_date=None,
+):
+    if not opportunity.get("active", True):
+        return False
+    if effective_status(opportunity, today=reference_date) != "Open":
+        return False
+    if require_application_record_kind:
+        return (
+            normalize_record_kind(opportunity.get("record_kind"))
+            == RECORD_KIND_APPLICATION
+        )
+    return True
 
 
 def get_supabase():
@@ -202,6 +229,8 @@ def prepare_profile(profile):
                 False
             )
         ),
+
+        "applicant_type": APPLICANT_INDIVIDUAL,
     }
 
 
@@ -216,17 +245,20 @@ def load_profiles(client):
     return result.data or []
 
 
-def load_open_opportunities(client):
+def load_matchable_opportunities(client):
     result = (
         client
         .table("opportunities")
         .select("*")
         .eq("active", True)
-        .eq("status", "Open")
         .execute()
     )
 
-    return result.data or []
+    return [
+        opportunity
+        for opportunity in (result.data or [])
+        if opportunity_is_actionable(opportunity)
+    ]
 
 
 def save_match(
@@ -319,7 +351,7 @@ def run_matching():
     )
 
     opportunities = (
-        load_open_opportunities(
+        load_matchable_opportunities(
             client
         )
     )
@@ -364,7 +396,7 @@ def run_matching():
     )
 
     print(
-        "Open opportunities:",
+        "Matchable opportunities:",
         len(opportunities)
     )
 
@@ -473,6 +505,15 @@ def run_matching():
     )
     print("====================================")
     print()
+
+    return {
+        "profiles_found": len(profiles),
+        "profiles_checked": len(matchable_profiles),
+        "profiles_skipped": len(skipped_profiles),
+        "opportunities": len(opportunities),
+        "matches_processed": processed,
+        "failures": failed,
+    }
 
 
 if __name__ == "__main__":

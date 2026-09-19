@@ -12,81 +12,15 @@ call ".venv\Scripts\activate.bat"
 
 echo. >> collector.log
 echo ======================================== >> collector.log
-echo HELAI OPPORTUNITY DESK COLLECTION START >> collector.log
+echo HELAI ONE-CYCLE AUTOMATION START >> collector.log
 echo ======================================== >> collector.log
 
-python automatic_collector.py >> collector.log 2>&1
+python helai_run_once.py >> collector.log 2>&1
 
 if errorlevel 1 (
-    echo Opportunity Desk collector failed. Automation stopped. >> collector.log
+    echo HelAI automation failed. Check the log above. >> collector.log
     exit /b 1
 )
-
-
-echo. >> collector.log
-echo ======================================== >> collector.log
-echo HELAI UKRI COLLECTION START >> collector.log
-echo ======================================== >> collector.log
-
-python ukri_automatic_collector.py >> collector.log 2>&1
-
-if errorlevel 1 (
-    echo UKRI collector failed. Automation stopped. >> collector.log
-    exit /b 1
-)
-
-
-echo. >> collector.log
-echo ======================================== >> collector.log
-echo HELAI KURDISH TRANSLATION START >> collector.log
-echo ======================================== >> collector.log
-
-python translation_service.py >> collector.log 2>&1
-
-if errorlevel 1 (
-    echo Translation failed. Automation stopped. >> collector.log
-    exit /b 1
-)
-
-
-echo. >> collector.log
-echo ======================================== >> collector.log
-echo HELAI AUTOMATIC MATCHING START >> collector.log
-echo ======================================== >> collector.log
-
-python matching_service.py >> collector.log 2>&1
-
-if errorlevel 1 (
-    echo Matching failed. Automation stopped. >> collector.log
-    exit /b 1
-)
-
-
-echo. >> collector.log
-echo ======================================== >> collector.log
-echo HELAI NOTIFICATION QUEUE START >> collector.log
-echo ======================================== >> collector.log
-
-python notification_service.py >> collector.log 2>&1
-
-if errorlevel 1 (
-    echo Notification queue failed. Automation stopped. >> collector.log
-    exit /b 1
-)
-
-
-echo. >> collector.log
-echo ======================================== >> collector.log
-echo HELAI EMAIL DELIVERY START >> collector.log
-echo ======================================== >> collector.log
-
-python email_service.py >> collector.log 2>&1
-
-if errorlevel 1 (
-    echo Email delivery failed. Automation stopped. >> collector.log
-    exit /b 1
-)
-
 
 echo. >> collector.log
 echo ======================================== >> collector.log

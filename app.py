@@ -6,6 +6,14 @@ from datetime import date
 from matcher import calculate_match, analyze_improvements
 from ai_extractor import extract_opportunity
 from opportunity_service import load_opportunities
+from helai_source_status import load_source_status
+from opportunity_rules import (
+    APPLICANT_INDIVIDUAL,
+    normalize_deadline,
+    normalize_open_date,
+    normalize_status,
+)
+from source_adapters import get_source_catalog
 from auth_service import (
     sign_up_user,
     sign_in_user,
@@ -13,6 +21,15 @@ from auth_service import (
     update_profile,
     sign_out_user,
 )
+
+MISSION_STATEMENT = (
+    "HelAI is an AI-powered opportunity agent that automatically discovers "
+    "global opportunities, understands their requirements, matches them with "
+    "each user’s profile, and delivers personalized guidance on what they "
+    "qualify for and what they need to apply."
+)
+
+MISSION_STATEMENT_HTML = html.escape(MISSION_STATEMENT)
 
 
 # =========================================================
@@ -561,6 +578,25 @@ section[data-testid="stSidebar"] hr {
     line-height: 1.67;
 
     font-weight: 500;
+}
+
+.mission-statement {
+
+    max-width: 860px;
+
+    margin-top: 28px;
+    padding-left: 18px;
+
+    border-left:
+        2px solid rgba(66,229,221,0.48);
+
+    color: #d9e1f5;
+
+    font-size: 18px;
+
+    line-height: 1.68;
+
+    font-weight: 650;
 }
 
 
@@ -1594,7 +1630,7 @@ if not st.session_state.access_token:
 
 
     st.html(
-        """
+        f"""
 <section class="hero">
 
     <div class="hero-badge">
@@ -1611,12 +1647,9 @@ if not st.session_state.access_token:
 
     </h1>
 
-    <div class="hero-copy">
+    <div class="mission-statement">
 
-        HelAI discovers and understands opportunities, turns
-        complex requirements into structured information,
-        matches them with your profile and helps you understand
-        what you qualify for and what you still need.
+        {MISSION_STATEMENT_HTML}
 
     </div>
 
@@ -1984,6 +2017,49 @@ with st.sidebar:
 
     st.divider()
 
+    st.markdown("### OPPORTUNITY SOURCES")
+
+    source_status = load_source_status()
+
+    for source in get_source_catalog():
+        key = source["key"]
+        status = source_status.get(key, {})
+        label = source["source_name"]
+
+        if status:
+            last_status = status.get(
+                "last_status",
+                "unknown",
+            )
+
+            imported = status.get(
+                "imported"
+            )
+
+            discovered = status.get(
+                "discovered"
+            )
+
+            st.caption(
+                f"{label} - {last_status}"
+            )
+
+            if (
+                discovered is not None
+                and imported is not None
+            ):
+                st.caption(
+                    f"Last run: {discovered} found, "
+                    f"{imported} imported"
+                )
+
+        else:
+            st.caption(
+                f"{label} - active"
+            )
+
+    st.divider()
+
     st.caption(
         f"{len(opportunities)} opportunities loaded"
     )
@@ -2019,7 +2095,7 @@ st.html(
 # =========================================================
 
 st.html(
-    """
+    f"""
 <section class="hero">
 
     <div class="hero-badge">
@@ -2036,13 +2112,9 @@ st.html(
 
     </h1>
 
-    <div class="hero-copy">
+    <div class="mission-statement">
 
-        HelAI turns global opportunity announcements into
-        personalized decisions. It understands requirements,
-        compares them with your saved profile and tells you
-        what matches, what you qualify for and what you still
-        need before applying.
+        {MISSION_STATEMENT_HTML}
 
     </div>
 
@@ -2137,6 +2209,23 @@ if st.button(
 
                 extracted = extract_opportunity(
                     announcement_text
+                )
+
+                extracted["status"] = normalize_status(
+                    extracted.get("status")
+                )
+
+                extracted["open_date"] = normalize_open_date(
+                    extracted.get("open_date"),
+                    announcement_text,
+                )
+
+                extracted["deadline"] = normalize_deadline(
+                    (
+                        extracted.get("close_date")
+                        or extracted.get("deadline")
+                    ),
+                    announcement_text,
                 )
 
                 st.session_state.ai_imported_opportunity = (
@@ -2319,6 +2408,24 @@ if st.session_state.ai_imported_opportunity:
         st.write(
             "**Residency:**",
             residency or "None detected"
+        )
+
+        applicant_types = extracted.get(
+            "eligible_applicant_types",
+            []
+        )
+
+        st.write(
+            "**Applicant type:**",
+            (
+                ", ".join(applicant_types)
+                if applicant_types
+                else extracted.get(
+                    "applicant_type",
+                    ""
+                )
+                or "Not stated"
+            )
         )
 
         minimum_grade = extracted.get(
@@ -2916,6 +3023,7 @@ if submitted:
                 "work_experience_years": float(
                     work_experience_years
                 ),
+                "applicant_type": APPLICANT_INDIVIDUAL,
             }
 
 
@@ -2960,8 +3068,10 @@ if submitted:
 
             results.sort(
                 key=lambda item: (
-                    item[0].get(
-                        "status"
+                    normalize_status(
+                        item[0].get(
+                            "status"
+                        )
                     ) == "Open",
                     item[1]["eligible"],
                     item[1]["score"],
@@ -3012,8 +3122,8 @@ if run_matching:
     open_count = sum(
         1
         for opportunity, result in results
-        if opportunity.get(
-            "status"
+        if normalize_status(
+            opportunity.get("status")
         ) == "Open"
     )
 
@@ -3022,8 +3132,8 @@ if run_matching:
         1
         for opportunity, result in results
         if (
-            opportunity.get(
-                "status"
+            normalize_status(
+                opportunity.get("status")
             ) == "Open"
             and result["eligible"]
         )
@@ -3034,8 +3144,8 @@ if run_matching:
         1
         for opportunity, result in results
         if (
-            opportunity.get(
-                "status"
+            normalize_status(
+                opportunity.get("status")
             ) == "Open"
             and result["eligible"]
             and result["readiness"] == 100
@@ -3047,8 +3157,8 @@ if run_matching:
         (
             result["score"]
             for opportunity, result in results
-            if opportunity.get(
-                "status"
+            if normalize_status(
+                opportunity.get("status")
             ) == "Open"
         ),
         default=0
@@ -3126,16 +3236,34 @@ if run_matching:
         )
 
 
-        if (
-            opportunity.get(
-                "status"
-            ) == "Closed"
-        ):
+        source_name = (
+            opportunity.get("source_name")
+            or opportunity.get("source")
+            or "Unknown source"
+        )
+
+        source_url = (
+            opportunity.get("source_url")
+            or ""
+        )
+
+        source_name_safe = html.escape(
+            str(source_name)
+        )
+
+
+        opportunity_status = normalize_status(
+            opportunity.get("status")
+        )
+
+        if opportunity_status == "Closed":
 
             card_class = "card card-red"
 
 
         elif (
+            opportunity_status == "Open"
+            and
             result["eligible"]
             and result["readiness"] == 100
         ):
@@ -3143,7 +3271,10 @@ if run_matching:
             card_class = "card card-green"
 
 
-        elif result["eligible"]:
+        elif (
+            opportunity_status == "Open"
+            and result["eligible"]
+        ):
 
             card_class = "card card-yellow"
 
@@ -3189,6 +3320,24 @@ if run_matching:
 </div>
 """
         )
+
+
+        source_html = f"""
+<div class="chips" style="margin-top: 12px;">
+    <span class="chip chip-blue">
+        SOURCE: {source_name_safe}
+    </span>
+</div>
+"""
+
+        st.html(source_html)
+
+        if source_url:
+            st.link_button(
+                "VIEW ORIGINAL SOURCE",
+                source_url,
+                use_container_width=False,
+            )
 
 
 
@@ -3390,10 +3539,16 @@ if run_matching:
         )
 
 
+        normalized_status = normalize_status(status)
+
         status_class = (
             "chip-green"
-            if status == "Open"
-            else "chip-red"
+            if normalized_status == "Open"
+            else (
+                "chip-yellow"
+                if normalized_status == "Upcoming"
+                else "chip-red"
+            )
         )
 
 
@@ -3416,7 +3571,7 @@ if run_matching:
 <div class="chips">
 
     <span class="chip {status_class}">
-        {html.escape(str(status))}
+        {html.escape(str(normalized_status))}
     </span>
 
     <span class="chip {eligibility_class}">
@@ -3593,15 +3748,22 @@ if run_matching:
                 )
 
             source = opportunity.get(
-                "source",
+                "source_name",
                 ""
-            )
+            ) or opportunity.get("source", "")
 
             if source:
 
                 st.write(
                     "**Source:**",
                     source
+                )
+
+            if source_url:
+
+                st.link_button(
+                    "VIEW ORIGINAL SOURCE",
+                    source_url,
                 )
 
 

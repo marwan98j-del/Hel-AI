@@ -6,6 +6,13 @@ import requests
 from dotenv import load_dotenv
 from supabase import create_client
 
+from helai_config import (
+    EMAIL_FROM,
+    EMAIL_TEST_MODE,
+    EMAIL_TEST_RECIPIENT,
+)
+from opportunity_rules import effective_status
+
 
 load_dotenv(override=True)
 
@@ -15,8 +22,8 @@ SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SECRET_KEY")
 RESEND_API_KEY = os.getenv("RESEND_API_KEY")
 
 
-TEST_MODE = True
-TEST_RECIPIENT = "marwan98j@gmail.com"
+TEST_MODE = EMAIL_TEST_MODE
+TEST_RECIPIENT = EMAIL_TEST_RECIPIENT
 
 MAX_ATTEMPTS = 3
 
@@ -712,9 +719,7 @@ def send_resend_email(
             "Content-Type": "application/json"
         },
         json={
-            "from": (
-                "HelAI <onboarding@resend.dev>"
-            ),
+            "from": EMAIL_FROM,
             "to": [recipient],
             "subject": subject,
             "html": html
@@ -929,6 +934,24 @@ def send_pending_notifications():
             skipped_count += 1
             continue
 
+        if effective_status(opportunity) != "Open":
+            print(
+                "SKIPPED: Opportunity is not open"
+            )
+
+            skipped_count += 1
+            continue
+
+        if not match.get(
+            "eligible",
+            False
+        ):
+            print(
+                "SKIPPED: Match is not eligible"
+            )
+
+            skipped_count += 1
+            continue
 
         if not profile.get(
             "email_notifications",
@@ -953,6 +976,15 @@ def send_pending_notifications():
 
 
         if TEST_MODE:
+            if not TEST_RECIPIENT:
+                print(
+                    "SKIPPED: EMAIL_TEST_MODE is true "
+                    "but EMAIL_TEST_RECIPIENT is empty"
+                )
+
+                skipped_count += 1
+                continue
+
             recipient = (
                 TEST_RECIPIENT
             )
@@ -1121,6 +1153,14 @@ def send_pending_notifications():
         skipped_count
     )
     print()
+
+    return {
+        "sent": sent_count,
+        "failed": failed_count,
+        "skipped": skipped_count,
+        "ready": len(notifications),
+        "test_mode": TEST_MODE,
+    }
 
 
 if __name__ == "__main__":

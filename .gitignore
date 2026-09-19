@@ -3,6 +3,7 @@
 __pycache__/
 *.pyc
 *.log
+helai_source_status.json
 .streamlit/secrets.toml
 
 app_before_*.py
@@ -11,3 +12,16 @@ setup_secret_key.py
 setup_resend_key.py
 resend_confirmation.py
 opportunities_backup.json
+helai_duplicate_cleanup_backups/
+helai_matching_backups/
+
+# Local HelAI audit, reconciliation, and backfill evidence
+helai_*_report.json
+helai_*_backups/
+helai_*_snapshots/
+helai_*_transaction.sql
+!helai_opportunity_intelligence_backfill_transaction.sql
+helai_opportunity_intelligence_backfill_plan.md
+
+# Local temporary directories created by test/runtime tooling
+/tmp*/

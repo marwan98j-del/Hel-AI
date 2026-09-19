@@ -2,6 +2,14 @@
 # OPPORTUNITY AI MATCHING ENGINE
 # =========================================================
 
+from opportunity_rules import (
+    APPLICANT_INDIVIDUAL,
+    applicant_types_are_entity_only,
+    get_eligible_applicant_types,
+    effective_status,
+    record_kind_is_non_actionable,
+)
+
 
 EDUCATION_LEVELS = {
     "High School": 1,
@@ -152,7 +160,7 @@ def calculate_location_relevance(profile, opportunity):
 # MAIN MATCH FUNCTION
 # =========================================================
 
-def calculate_match(profile, opportunity):
+def calculate_match(profile, opportunity, reference_date=None):
 
     reasons = []
 
@@ -162,10 +170,39 @@ def calculate_match(profile, opportunity):
     eligible = True
 
     # -----------------------------------------------------
-    # CLOSED
+    # NON-ACTIONABLE STATUS
     # -----------------------------------------------------
 
-    if opportunity.get("status") == "Closed":
+    normalized_status = effective_status(
+        opportunity,
+        today=reference_date,
+    )
+
+    if record_kind_is_non_actionable(
+        opportunity.get("record_kind")
+    ):
+        gap = (
+            "This record is informational and is not "
+            "an application opportunity"
+        )
+        return {
+            "score": 0,
+            "eligible": False,
+            "readiness": 0,
+            "reasons": [],
+            "missing": [gap],
+            "eligibility_gaps": [gap],
+            "readiness_gaps": [],
+        }
+
+    if normalized_status != "Open":
+
+        if normalized_status == "Upcoming":
+            status_gap = "This opportunity is not open yet"
+        elif normalized_status == "Closed":
+            status_gap = "This opportunity is closed"
+        else:
+            status_gap = "This opportunity does not have a confirmed open status"
 
         return {
             "score": 0,
@@ -173,13 +210,45 @@ def calculate_match(profile, opportunity):
             "readiness": 0,
             "reasons": [],
             "missing": [
-                "This opportunity is closed"
+                status_gap
             ],
             "eligibility_gaps": [
-                "This opportunity is closed"
+                status_gap
             ],
             "readiness_gaps": []
         }
+
+    # -----------------------------------------------------
+    # APPLICANT TYPE
+    # -----------------------------------------------------
+
+    profile_applicant_type = profile.get(
+        "applicant_type",
+        APPLICANT_INDIVIDUAL
+    )
+
+    applicant_types = get_eligible_applicant_types(
+        opportunity
+    )
+
+    if (
+        profile_applicant_type == APPLICANT_INDIVIDUAL
+        and applicant_types_are_entity_only(
+            applicant_types
+        )
+    ):
+
+        eligible = False
+
+        eligibility_gaps.append(
+            "This opportunity is only for eligible organizations or institutions, not individual applicants"
+        )
+
+    elif applicant_types:
+
+        reasons.append(
+            "Applicant type was checked"
+        )
 
     # -----------------------------------------------------
     # AGE

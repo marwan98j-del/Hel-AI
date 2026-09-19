@@ -8,6 +8,16 @@ from dotenv import load_dotenv
 from supabase import create_client
 
 from ai_extractor import extract_opportunity
+from collector_service import find_existing_opportunity, save_opportunity
+from opportunity_rules import (
+    create_fingerprint,
+    get_eligible_applicant_types,
+    normalize_applicant_types,
+    normalize_deadline,
+    normalize_open_date,
+    normalize_status,
+    normalize_url,
+)
 from ukri_discovery import discover_ukri_opportunities
 from ukri_article import read_ukri_opportunity
 
@@ -93,30 +103,6 @@ def clean_list(value):
     ]
 
 
-def clean_date(value):
-    value = clean_text(value)
-
-    if not value:
-        return None
-
-    return value
-
-
-def create_fingerprint(
-    title,
-    source_url
-):
-    raw = (
-        clean_text(title).lower()
-        + "|"
-        + clean_text(source_url).lower()
-    )
-
-    return hashlib.sha256(
-        raw.encode("utf-8")
-    ).hexdigest()
-
-
 def get_external_id(url):
     path = (
         urlparse(url)
@@ -144,40 +130,24 @@ def should_skip_title(title):
 
 def already_exists(
     supabase,
-    source_url
+    source_url,
+    title="",
+    external_id="",
 ):
-    result = (
-        supabase
-        .table("opportunities")
-        .select("id,title")
-        .eq(
-            "source_url",
-            source_url
-        )
-        .limit(1)
-        .execute()
+    normalized_url = normalize_url(source_url)
+    return find_existing_opportunity(
+        {
+            "title": title,
+            "source_url": normalized_url,
+            "external_id": external_id,
+            "fingerprint": create_fingerprint(
+                title,
+                normalized_url,
+                external_id,
+            ),
+        },
+        client=supabase,
     )
-
-    if result.data:
-        return result.data[0]
-
-    return None
-
-
-def normalize_status(value):
-    value = clean_text(value)
-
-    allowed = {
-        "Open",
-        "Closed",
-        "Upcoming",
-        "Unknown",
-    }
-
-    if value in allowed:
-        return value
-
-    return "Unknown"
 
 
 def normalize_education_rule(value):
@@ -216,6 +186,44 @@ def build_record(
     if not opportunity_type:
         opportunity_type = "Grants"
 
+    source_url = normalize_url(
+        source_url
+    )
+
+    external_id = get_external_id(
+        source_url
+    )
+
+    source_text = "\n".join(
+        value
+        for value in [
+            clean_text(extracted.get("deadline")),
+            clean_text(extracted.get("close_date")),
+            clean_text(extracted.get("open_date")),
+            article_text,
+        ]
+        if value
+    )
+
+    applicant_types = normalize_applicant_types(
+        extracted.get("eligible_applicant_types")
+        or extracted.get("applicant_type")
+    )
+
+    if not applicant_types:
+        applicant_types = get_eligible_applicant_types(
+            {
+                "title": title,
+                "organization": extracted.get(
+                    "organization"
+                ),
+                "type": opportunity_type,
+                "notes": extracted.get("notes"),
+                "summary_en": extracted.get("notes"),
+                "original_text": article_text,
+            }
+        )
+
     record = {
         "title": title,
 
@@ -233,8 +241,32 @@ def build_record(
             extracted.get("status")
         ),
 
-        "deadline": clean_date(
-            extracted.get("deadline")
+        "open_date": normalize_open_date(
+            extracted.get("open_date"),
+            source_text,
+        ),
+
+        "deadline": normalize_deadline(
+            (
+                extracted.get("close_date")
+                or extracted.get("deadline")
+            ),
+            source_text,
+        ),
+
+        "close_date": normalize_deadline(
+            extracted.get("close_date"),
+            source_text,
+        ),
+
+        "eligible_applicant_types": (
+            applicant_types
+        ),
+
+        "applicant_type": (
+            ", ".join(applicant_types)
+            if applicant_types
+            else None
         ),
 
         "minimum_age": clean_integer(
@@ -341,14 +373,13 @@ def build_record(
 
         "source_url": source_url,
 
-        "external_id": get_external_id(
-            source_url
-        ),
+        "external_id": external_id,
 
         "fingerprint":
             create_fingerprint(
                 title,
-                source_url
+                source_url,
+                external_id,
             ),
 
         "active": True,
@@ -408,7 +439,7 @@ def run_collector():
             candidate.get("title")
         )
 
-        source_url = clean_text(
+        source_url = normalize_url(
             candidate.get("url")
         )
 
@@ -433,15 +464,14 @@ def run_collector():
             continue
 
         try:
-            found = already_exists(
+            external_id = get_external_id(source_url)
+            if already_exists(
                 supabase,
-                source_url
-            )
-
-            if found:
-                print(
-                    "Result: Already in Supabase. Skipped."
-                )
+                source_url,
+                title=title,
+                external_id=external_id,
+            ):
+                print("Result: Existing. Skipped.")
                 existing += 1
                 print()
                 continue
@@ -471,22 +501,25 @@ def run_collector():
                 source_url
             )
 
-            result = (
-                supabase
-                .table("opportunities")
-                .insert(record)
-                .execute()
+            result = save_opportunity(
+                record
             )
 
-            if not result.data:
+            if not result["data"]:
                 raise ValueError(
                     "Supabase did not return "
-                    "the inserted opportunity."
+                    "the saved opportunity."
                 )
 
             print(
-                "Result: created"
+                "Result:",
+                result["action"]
             )
+
+            if result["action"] == "updated":
+                existing += 1
+            else:
+                imported += 1
 
             print(
                 "AI title:",
@@ -502,8 +535,6 @@ def run_collector():
                 "Deadline:",
                 record["deadline"]
             )
-
-            imported += 1
 
             time.sleep(
                 DELAY_SECONDS

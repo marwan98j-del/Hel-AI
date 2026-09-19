@@ -61,7 +61,12 @@ Use exactly this JSON structure:
     "type": "",
     "location": "",
     "status": "",
+    "open_date": null,
     "deadline": "",
+    "close_date": null,
+    "record_kind": "unknown",
+    "eligible_applicant_types": [],
+    "applicant_type": "",
     "minimum_age": null,
     "maximum_age": null,
     "education": "Any",
@@ -161,33 +166,112 @@ YYYY-MM-DD
 
 whenever enough information is provided.
 
-6. Use null for an age limit that is not stated.
+Only use "deadline" or "close_date" for an explicitly
+labeled closing date, deadline, due date, or applications
+close date.
 
-7. Use 0 for minimum grade if no grade requirement is stated.
+If a date is only an opening date, start date, posted date,
+forecasted date, or "applications accepted anytime starting"
+date, put it in "open_date" and leave "deadline" and
+"close_date" null or empty.
 
-8. Use 0 for work experience if no experience requirement
+Do not choose the first date you see.
+
+6. "eligible_applicant_types" must use only these values:
+
+individual
+organization/institution
+company/business
+government entity
+university/research institution
+NGO/nonprofit
+mixed/both/unknown
+
+Use these only when the announcement explicitly states who
+may apply.
+
+Examples:
+
+"Students may apply"
+=> ["individual"]
+
+"Research organisations eligible to apply"
+=> ["university/research institution"]
+
+"State, territorial, and tribal organizations"
+=> ["government entity", "organization/institution"]
+
+"Small businesses may apply"
+=> ["company/business"]
+
+"Nonprofit organizations may apply"
+=> ["NGO/nonprofit"]
+
+If both individuals and organizations can apply:
+=> ["mixed/both/unknown"]
+
+If the announcement does not clearly say who may apply:
+=> []
+
+Set "applicant_type" to the single primary value, "mixed" when both
+individuals and entities may apply, or "" when unknown.
+
+7. "record_kind" must be exactly one of:
+
+application_opportunity
+informational
+roundup
+unknown
+
+Use "informational" for articles, guides, advice posts, or news pages.
+Use "roundup" for pages aggregating multiple separate opportunities.
+Use "application_opportunity" only when the page content demonstrates a
+direct application. A title containing grant, scholarship, fellowship, or
+competition is not sufficient evidence. Use "unknown" when evidence is
+insufficient. Do not guess.
+
+8. Use null for an age limit that is not stated.
+
+9. Use 0 for minimum grade if no grade requirement is stated.
+
+10. Use 0 for work experience if no experience requirement
 is stated.
 
-9. Only mark passport, IELTS, portfolio, or CV as true
+11. Only mark passport, IELTS, portfolio, or CV as true
 when the announcement explicitly requires it.
 
-10. Do not mark IELTS as required just because English
+12. Do not mark IELTS as required just because English
 language ability is required.
 
-11. Translate extracted labels and descriptions into English,
+13. Translate extracted labels and descriptions into English,
 even when the source announcement is Kurdish or Arabic.
 
-12. Keep notes short and factual.
+14. Keep notes short and factual. Include clear organization
+or entity-only applicant restrictions when explicitly stated.
 
-13. "status" should normally be:
+15. "status" should be:
 
 Open
 
-unless the announcement clearly indicates that it is
-closed or expired.
+only when the announcement is posted, active, or currently
+accepting applications.
 
-14. Never invent a residency, degree, age, language,
-document, grade or work-experience requirement.
+Use:
+
+Upcoming
+
+when the announcement says forecasted, forecast, upcoming,
+planned, or not yet accepting applications.
+
+Use:
+
+Closed
+
+when it is closed or expired.
+
+16. Never invent a residency, degree, age, language,
+document, grade, work-experience, applicant-type, opening
+date, or deadline requirement.
 
 ANNOUNCEMENT:
 

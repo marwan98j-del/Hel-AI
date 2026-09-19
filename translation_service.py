@@ -1,4 +1,5 @@
 import os
+import sys
 from datetime import datetime, timezone
 
 from dotenv import load_dotenv
@@ -53,6 +54,25 @@ def clean_value(value):
         return ""
 
     return str(value).strip()
+
+
+def console_text(value):
+    encoding = (
+        sys.stdout.encoding
+        or "utf-8"
+    )
+
+    return (
+        str(value)
+        .encode(
+            encoding,
+            errors="replace",
+        )
+        .decode(
+            encoding,
+            errors="replace",
+        )
+    )
 
 
 def build_source_text(opportunity):
@@ -348,7 +368,9 @@ def run_translation_service():
                 "Preview:"
             )
             print(
-                translation[:350]
+                console_text(
+                    translation[:350]
+                )
             )
 
             if len(translation) > 350:
@@ -386,6 +408,12 @@ def run_translation_service():
         failed_count
     )
     print()
+
+    return {
+        "translated": translated_count,
+        "failed": failed_count,
+        "candidates": len(candidates),
+    }
 
 
 if __name__ == "__main__":

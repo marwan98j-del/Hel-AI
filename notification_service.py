@@ -1,11 +1,13 @@
 from collector_client import collector_supabase
+from helai_config import HELAI_MATCH_THRESHOLD
+from opportunity_rules import effective_status
 
 
 # =========================================================
 # CONFIGURATION
 # =========================================================
 
-MINIMUM_MATCH_SCORE = 70
+MINIMUM_MATCH_SCORE = HELAI_MATCH_THRESHOLD
 
 
 # =========================================================
@@ -23,11 +25,16 @@ def load_notification_candidates():
             "match_score",
             MINIMUM_MATCH_SCORE
         )
-        .eq("notified", False)
         .execute()
     )
 
-    return response.data or []
+    matches = response.data or []
+
+    return [
+        match
+        for match in matches
+        if not match.get("notified", False)
+    ]
 
 
 # =========================================================
@@ -156,7 +163,7 @@ def create_notification(match_record):
             "reason": "Opportunity not found."
         }
 
-    if opportunity.get("status") != "Open":
+    if effective_status(opportunity) != "Open":
         return {
             "created": False,
             "reason": "Opportunity is not open."
@@ -274,7 +281,11 @@ def build_notification_queue():
     print("====================================")
     print()
 
-    return created_count
+    return {
+        "strong_new_matches": len(candidates),
+        "queued": created_count,
+        "skipped": skipped_count,
+    }
 
 
 # =========================================================
