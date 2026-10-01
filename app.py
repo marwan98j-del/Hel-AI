@@ -1,5 +1,4 @@
 import streamlit as st
-import streamlit.components.v1 as components
 import html
 from datetime import date
 
@@ -14,6 +13,18 @@ from opportunity_rules import (
     normalize_status,
 )
 from source_adapters import get_source_catalog
+from helai_ui import (
+    inject_global_styles,
+    profile_group,
+    render_booster_card,
+    render_booster_intro,
+    render_empty_state,
+    render_kpis,
+    render_opportunity_card,
+    result_kpis,
+    result_sort_key,
+    section_header,
+)
 from auth_service import (
     sign_up_user,
     sign_in_user,
@@ -22,23 +33,13 @@ from auth_service import (
     sign_out_user,
 )
 
-MISSION_STATEMENT = (
-    "HelAI is an AI-powered opportunity agent that automatically discovers "
-    "global opportunities, understands their requirements, matches them with "
-    "each user’s profile, and delivers personalized guidance on what they "
-    "qualify for and what they need to apply."
-)
-
-MISSION_STATEMENT_HTML = html.escape(MISSION_STATEMENT)
-
-
 # =========================================================
 # PAGE CONFIG
 # =========================================================
 
 st.set_page_config(
     page_title="HelAI",
-    page_icon="🎯",
+    page_icon="H",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -67,1424 +68,7 @@ except Exception as error:
 # VISUAL DESIGN
 # =========================================================
 
-st.markdown(
-    r"""
-<style>
-
-:root {
-    --bg: #050816;
-    --surface: rgba(12, 19, 43, 0.82);
-    --surface-strong: rgba(15, 23, 52, 0.94);
-
-    --white: #f7f9ff;
-    --text: #e9edfa;
-    --muted: #a7b2ce;
-
-    --blue: #527cff;
-    --violet: #8f62ff;
-    --cyan: #42e5dd;
-
-    --green: #70f5a0;
-    --yellow: #ffc85d;
-    --red: #ff6989;
-
-    --border: rgba(130, 151, 255, 0.20);
-}
-
-
-/* ======================================================
-   GLOBAL
-   ====================================================== */
-
-html {
-    scroll-behavior: smooth;
-}
-
-html,
-body {
-    background: var(--bg) !important;
-}
-
-body,
-button,
-input,
-textarea,
-select {
-    font-family:
-        Inter,
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        Arial,
-        sans-serif;
-}
-
-
-/* ======================================================
-   ANIMATED PAGE BACKGROUND
-   No pseudo-elements = cannot cover Streamlit UI
-   ====================================================== */
-
-.stApp {
-    color: var(--text);
-
-    background:
-        radial-gradient(
-            circle at 12% 18%,
-            rgba(71, 94, 255, 0.28) 0%,
-            transparent 31%
-        ),
-        radial-gradient(
-            circle at 84% 78%,
-            rgba(54, 228, 218, 0.19) 0%,
-            transparent 30%
-        ),
-        radial-gradient(
-            circle at 72% 10%,
-            rgba(143, 98, 255, 0.19) 0%,
-            transparent 25%
-        ),
-        linear-gradient(
-            135deg,
-            #040713 0%,
-            #070b1a 42%,
-            #09071c 100%
-        );
-
-    background-size:
-        150% 150%,
-        145% 145%,
-        160% 160%,
-        100% 100%;
-
-    animation:
-        ambientBackground 18s ease-in-out infinite alternate;
-}
-
-
-@keyframes ambientBackground {
-
-    0% {
-        background-position:
-            0% 0%,
-            100% 100%,
-            70% 0%,
-            0% 0%;
-    }
-
-    50% {
-        background-position:
-            15% 20%,
-            80% 75%,
-            90% 25%,
-            0% 0%;
-    }
-
-    100% {
-        background-position:
-            30% 8%,
-            65% 90%,
-            65% 40%,
-            0% 0%;
-    }
-}
-
-
-/* ======================================================
-   MINIMAL WHITE DOT + RING CURSOR
-   ====================================================== */
-
-.stApp,
-.stApp button,
-.stApp a,
-.stApp select,
-.stApp [role="button"],
-section[data-testid="stSidebar"] {
-    cursor:
-        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12' fill='none' stroke='%23ffffff' stroke-opacity='.14' stroke-width='1'/%3E%3Ccircle cx='16' cy='16' r='3.6' fill='%23ffffff'/%3E%3C/svg%3E")
-        16 16,
-        auto !important;
-}
-
-.stApp:active,
-.stApp button:active,
-.stApp a:active,
-.stApp [role="button"]:active,
-section[data-testid="stSidebar"]:active {
-    cursor:
-        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12.7' fill='none' stroke='%23ffffff' stroke-opacity='.30' stroke-width='1.2'/%3E%3Ccircle cx='16' cy='16' r='4.2' fill='%23ffffff'/%3E%3C/svg%3E")
-        16 16,
-        auto !important;
-}
-
-input,
-textarea,
-[contenteditable="true"] {
-    cursor: text !important;
-}
-
-
-/* ======================================================
-   MAIN CONTENT
-   ====================================================== */
-
-.block-container {
-    max-width: 1320px;
-
-    padding-top: 2.5rem;
-    padding-bottom: 7rem;
-    padding-left: 3.4rem;
-    padding-right: 3.4rem;
-}
-
-
-/* ======================================================
-   STREAMLIT DEFAULT TEXT
-   ====================================================== */
-
-.stApp p {
-    color: var(--text);
-    font-size: 17px;
-    line-height: 1.65;
-}
-
-.stApp span {
-    color: inherit;
-}
-
-.stApp label {
-    color: var(--text);
-}
-
-
-/* ======================================================
-   STREAMLIT HEADER
-   ====================================================== */
-
-header[data-testid="stHeader"] {
-    background: transparent !important;
-}
-
-footer {
-    visibility: hidden;
-}
-
-
-/* ======================================================
-   SIDEBAR
-   ====================================================== */
-
-section[data-testid="stSidebar"] {
-
-    background:
-        linear-gradient(
-            180deg,
-            rgba(5, 9, 24, 0.98),
-            rgba(10, 14, 34, 0.98)
-        ) !important;
-
-    border-right:
-        1px solid rgba(106, 132, 255, 0.20);
-
-    box-shadow:
-        14px 0 60px rgba(0, 0, 0, 0.30);
-}
-
-
-section[data-testid="stSidebar"] h1 {
-
-    font-size: 29px !important;
-    font-weight: 950 !important;
-
-    background:
-        linear-gradient(
-            90deg,
-            #ffffff,
-            #82a0ff,
-            #58efe6
-        );
-
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-
-
-section[data-testid="stSidebar"] h3 {
-    font-size: 17px !important;
-    color: #8ea8ff !important;
-}
-
-
-section[data-testid="stSidebar"] p {
-
-    color: #b8c3df !important;
-    font-size: 15px !important;
-}
-
-
-section[data-testid="stSidebar"] hr {
-    border-color: rgba(255,255,255,0.09);
-}
-
-
-/* ======================================================
-   TOP BAR
-   ====================================================== */
-
-.topbar {
-
-    position: relative;
-    overflow: hidden;
-
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-
-    gap: 20px;
-
-    margin-bottom: 34px;
-    padding: 17px 21px;
-
-    border:
-        1px solid rgba(115, 143, 255, 0.25);
-
-    border-radius: 15px;
-
-    background:
-        rgba(8, 13, 31, 0.66);
-
-    backdrop-filter: blur(18px);
-
-    box-shadow:
-        0 18px 50px rgba(0,0,0,0.25),
-        inset 0 1px 0 rgba(255,255,255,0.06);
-
-    color: #dfe6ff;
-
-    font-size: 14px;
-    font-weight: 800;
-
-    letter-spacing: 0.8px;
-}
-
-
-.topbar::after {
-
-    content: "";
-
-    position: absolute;
-
-    left: -35%;
-    bottom: 0;
-
-    width: 30%;
-    height: 2px;
-
-    background:
-        linear-gradient(
-            90deg,
-            transparent,
-            var(--blue),
-            var(--violet),
-            var(--cyan),
-            transparent
-        );
-
-    animation:
-        scanTopbar 5s linear infinite;
-}
-
-
-@keyframes scanTopbar {
-
-    from {
-        transform: translateX(0);
-    }
-
-    to {
-        transform: translateX(500%);
-    }
-}
-
-
-/* ======================================================
-   HERO
-   ====================================================== */
-
-.hero {
-
-    position: relative;
-    overflow: hidden;
-
-    min-height: 650px;
-
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-
-    padding: 75px 68px;
-    margin-bottom: 95px;
-
-    border:
-        1px solid rgba(124, 149, 255, 0.25);
-
-    border-radius: 30px;
-
-    background:
-        radial-gradient(
-            circle at 82% 20%,
-            rgba(91, 111, 255, 0.24),
-            transparent 35%
-        ),
-        radial-gradient(
-            circle at 15% 100%,
-            rgba(54, 228, 218, 0.10),
-            transparent 34%
-        ),
-        linear-gradient(
-            135deg,
-            rgba(12, 18, 41, 0.94),
-            rgba(13, 18, 45, 0.75)
-        );
-
-    background-size:
-        130% 130%,
-        140% 140%,
-        100% 100%;
-
-    animation:
-        heroBackground 11s ease-in-out infinite alternate;
-
-    backdrop-filter: blur(20px);
-
-    box-shadow:
-        0 40px 100px rgba(0,0,0,0.38),
-        inset 0 1px 0 rgba(255,255,255,0.08);
-}
-
-
-@keyframes heroBackground {
-
-    from {
-        background-position:
-            100% 0%,
-            0% 100%,
-            0% 0%;
-    }
-
-    to {
-        background-position:
-            75% 30%,
-            25% 70%,
-            0% 0%;
-    }
-}
-
-
-.hero-badge {
-
-    width: fit-content;
-
-    padding: 10px 16px;
-    margin-bottom: 37px;
-
-    border:
-        1px solid rgba(66,229,221,0.42);
-
-    border-radius: 999px;
-
-    background:
-        rgba(66,229,221,0.07);
-
-    color: #75f5ed;
-
-    font-size: 15px;
-
-    font-weight: 850;
-
-    letter-spacing: 1px;
-}
-
-
-.hero-title {
-
-    max-width: 1050px;
-
-    margin: 0;
-
-    color: #ffffff;
-
-    font-size:
-        clamp(
-            68px,
-            7.8vw,
-            122px
-        );
-
-    line-height: 0.87;
-
-    letter-spacing: -6px;
-
-    font-weight: 950;
-}
-
-
-.gradient-word {
-
-    background:
-        linear-gradient(
-            90deg,
-            #6c91ff 0%,
-            #a66cff 43%,
-            #4cebdd 86%
-        );
-
-    background-size: 220% 100%;
-
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-
-    animation:
-        titleGradient 7s ease-in-out infinite;
-}
-
-
-@keyframes titleGradient {
-
-    0% {
-        background-position: 0% 50%;
-    }
-
-    50% {
-        background-position: 100% 50%;
-    }
-
-    100% {
-        background-position: 0% 50%;
-    }
-}
-
-
-.hero-copy {
-
-    max-width: 800px;
-
-    margin-top: 42px;
-
-    color: #c0cae4;
-
-    font-size: 21px;
-
-    line-height: 1.67;
-
-    font-weight: 500;
-}
-
-.mission-statement {
-
-    max-width: 860px;
-
-    margin-top: 28px;
-    padding-left: 18px;
-
-    border-left:
-        2px solid rgba(66,229,221,0.48);
-
-    color: #d9e1f5;
-
-    font-size: 18px;
-
-    line-height: 1.68;
-
-    font-weight: 650;
-}
-
-
-.hero-chips {
-
-    display: flex;
-    flex-wrap: wrap;
-
-    gap: 11px;
-
-    margin-top: 38px;
-}
-
-
-.hero-chip {
-
-    padding: 9px 14px;
-
-    border:
-        1px solid rgba(255,255,255,0.12);
-
-    border-radius: 10px;
-
-    background:
-        rgba(255,255,255,0.045);
-
-    color: #dde4f8;
-
-    font-size: 14px;
-
-    font-weight: 750;
-}
-
-
-/* ======================================================
-   SECTION HEADERS
-   ====================================================== */
-
-.section {
-
-    margin-top: 90px;
-    margin-bottom: 38px;
-}
-
-
-.section-index {
-
-    margin-bottom: 17px;
-
-    color: #7899ff;
-
-    font-size: 18px;
-
-    font-weight: 850;
-
-    letter-spacing: 1px;
-}
-
-
-.section-title {
-
-    margin: 0;
-
-    color: #ffffff;
-
-    font-size:
-        clamp(
-            48px,
-            5vw,
-            76px
-        );
-
-    line-height: 0.95;
-
-    letter-spacing: -3px;
-
-    font-weight: 940;
-}
-
-
-.section-copy {
-
-    max-width: 790px;
-
-    margin-top: 20px;
-
-    color: #aeb9d4;
-
-    font-size: 19px;
-
-    line-height: 1.65;
-}
-
-
-/* ======================================================
-   EXPLAINER
-   ====================================================== */
-
-.explainer {
-
-    padding: 26px 29px;
-    margin: 10px 0 38px 0;
-
-    border:
-        1px solid rgba(103, 139, 255, 0.27);
-
-    border-radius: 17px;
-
-    background:
-        linear-gradient(
-            120deg,
-            rgba(79,124,255,0.12),
-            rgba(143,98,255,0.08),
-            rgba(66,229,221,0.05)
-        );
-
-    color: #d9e0f3;
-
-    font-size: 18px;
-
-    line-height: 1.65;
-
-    box-shadow:
-        inset 0 1px 0 rgba(255,255,255,0.05);
-}
-
-
-/* ======================================================
-   CARDS
-   ====================================================== */
-
-.card {
-
-    position: relative;
-    overflow: hidden;
-
-    margin: 28px 0 30px 0;
-    padding: 34px 35px;
-
-    border:
-        1px solid rgba(124, 149, 255, 0.23);
-
-    border-radius: 21px;
-
-    background:
-        linear-gradient(
-            145deg,
-            rgba(15, 23, 51, 0.92),
-            rgba(8, 13, 31, 0.86)
-        );
-
-    backdrop-filter: blur(18px);
-
-    box-shadow:
-        0 25px 70px rgba(0,0,0,0.30),
-        inset 0 1px 0 rgba(255,255,255,0.06);
-
-    transition:
-        transform 0.25s ease,
-        border-color 0.25s ease,
-        box-shadow 0.25s ease;
-}
-
-
-.card:hover {
-
-    transform: translateY(-6px);
-
-    border-color:
-        rgba(101, 150, 255, 0.52);
-
-    box-shadow:
-        0 34px 90px rgba(0,0,0,0.40),
-        0 0 50px rgba(79,124,255,0.10);
-}
-
-
-.card::before {
-
-    content: "";
-
-    position: absolute;
-
-    left: 0;
-    top: 0;
-
-    width: 100%;
-    height: 2px;
-
-    background:
-        linear-gradient(
-            90deg,
-            transparent,
-            var(--blue),
-            var(--violet),
-            var(--cyan),
-            transparent
-        );
-
-    background-size: 220% 100%;
-
-    animation:
-        cardLine 5s linear infinite;
-}
-
-
-@keyframes cardLine {
-
-    from {
-        background-position: 200% 0%;
-    }
-
-    to {
-        background-position: -200% 0%;
-    }
-}
-
-
-.card-green {
-    border-color: rgba(112,245,160,0.26);
-}
-
-.card-green::before {
-    background:
-        linear-gradient(
-            90deg,
-            transparent,
-            var(--green),
-            var(--cyan),
-            transparent
-        );
-}
-
-
-.card-yellow {
-    border-color: rgba(255,200,93,0.28);
-}
-
-.card-yellow::before {
-    background:
-        linear-gradient(
-            90deg,
-            transparent,
-            var(--yellow),
-            var(--violet),
-            transparent
-        );
-}
-
-
-.card-red {
-    border-color: rgba(255,105,137,0.28);
-}
-
-.card-red::before {
-    background:
-        linear-gradient(
-            90deg,
-            transparent,
-            var(--red),
-            var(--violet),
-            transparent
-        );
-}
-
-
-.card-number {
-
-    margin-bottom: 15px;
-
-    color: #7698ff;
-
-    font-size: 15px;
-
-    font-weight: 850;
-
-    letter-spacing: 1px;
-}
-
-
-.card-title {
-
-    margin-bottom: 9px;
-
-    color: #ffffff;
-
-    font-size: 34px;
-
-    line-height: 1.08;
-
-    letter-spacing: -1.3px;
-
-    font-weight: 920;
-}
-
-
-.card-org {
-
-    color: #a6b1cd;
-
-    font-size: 17px;
-
-    font-weight: 600;
-}
-
-
-.ai-tag {
-
-    display: inline-block;
-
-    margin-top: 18px;
-    padding: 8px 12px;
-
-    border:
-        1px solid rgba(168,112,255,0.4);
-
-    border-radius: 9px;
-
-    background:
-        rgba(143,98,255,0.11);
-
-    color: #d1baff;
-
-    font-size: 13px;
-
-    font-weight: 850;
-}
-
-
-/* ======================================================
-   METRICS
-   ====================================================== */
-
-div[data-testid="stMetric"] {
-
-    min-height: 116px;
-
-    padding: 21px 23px;
-
-    border:
-        1px solid rgba(126,149,255,0.20);
-
-    border-radius: 17px;
-
-    background:
-        linear-gradient(
-            145deg,
-            rgba(17,25,55,0.86),
-            rgba(9,14,32,0.82)
-        );
-
-    box-shadow:
-        0 15px 38px rgba(0,0,0,0.22),
-        inset 0 1px 0 rgba(255,255,255,0.05);
-}
-
-
-div[data-testid="stMetricLabel"] {
-
-    color: #9caac9 !important;
-
-    font-size: 15px !important;
-
-    font-weight: 750 !important;
-}
-
-
-div[data-testid="stMetricValue"] {
-
-    color: #ffffff !important;
-
-    font-size: 31px !important;
-
-    font-weight: 900 !important;
-
-    letter-spacing: -1px;
-}
-
-
-/* ======================================================
-   FORMS
-   ====================================================== */
-
-label[data-testid="stWidgetLabel"] p {
-
-    color: #dce3f5 !important;
-
-    font-size: 16px !important;
-
-    font-weight: 750 !important;
-}
-
-
-div[data-baseweb="input"] > div,
-div[data-baseweb="textarea"] > div,
-div[data-baseweb="select"] > div {
-
-    border:
-        1px solid rgba(126,149,255,0.25) !important;
-
-    border-radius:
-        13px !important;
-
-    background:
-        rgba(9,14,33,0.86) !important;
-
-    box-shadow:
-        inset 0 1px 0 rgba(255,255,255,0.04);
-}
-
-
-input,
-textarea {
-
-    color: #f4f7ff !important;
-
-    font-size: 17px !important;
-}
-
-
-textarea {
-    min-height: 225px;
-}
-
-
-span[data-baseweb="tag"] {
-
-    border:
-        1px solid rgba(103,145,255,0.35) !important;
-
-    border-radius:
-        8px !important;
-
-    background:
-        rgba(79,124,255,0.13) !important;
-
-    color:
-        #e1e8ff !important;
-}
-
-
-/* ======================================================
-   BUTTONS
-   ====================================================== */
-
-.stButton > button,
-.stFormSubmitButton > button {
-
-    min-height: 59px;
-
-    border:
-        1px solid rgba(132,153,255,0.38) !important;
-
-    border-radius:
-        13px !important;
-
-    background:
-        linear-gradient(
-            110deg,
-            #416dff,
-            #7a58f6,
-            #32d3ca
-        ) !important;
-
-    background-size:
-        220% 100% !important;
-
-    color:
-        #ffffff !important;
-
-    font-size:
-        16px !important;
-
-    font-weight:
-        850 !important;
-
-    letter-spacing:
-        0.4px;
-
-    box-shadow:
-        0 17px 40px rgba(77,124,255,0.24);
-
-    transition:
-        transform 0.2s ease,
-        box-shadow 0.2s ease;
-
-    animation:
-        buttonFlow 5s ease-in-out infinite;
-}
-
-
-@keyframes buttonFlow {
-
-    0% {
-        background-position: 0% 50%;
-    }
-
-    50% {
-        background-position: 100% 50%;
-    }
-
-    100% {
-        background-position: 0% 50%;
-    }
-}
-
-
-.stButton > button:hover,
-.stFormSubmitButton > button:hover {
-
-    transform:
-        translateY(-3px)
-        scale(1.004);
-
-    box-shadow:
-        0 23px 55px rgba(77,124,255,0.35);
-}
-
-
-/* ======================================================
-   CHECKBOXES
-   ====================================================== */
-
-[data-testid="stCheckbox"] label {
-
-    color:
-        #dce4f7 !important;
-
-    font-size:
-        16px !important;
-}
-
-
-/* ======================================================
-   ALERTS
-   ====================================================== */
-
-[data-testid="stAlert"] {
-
-    border-radius:
-        14px !important;
-
-    border:
-        1px solid rgba(255,255,255,0.12);
-
-    font-size:
-        16px;
-}
-
-
-/* ======================================================
-   EXPANDERS
-   ====================================================== */
-
-details {
-
-    border:
-        1px solid rgba(124,147,255,0.21) !important;
-
-    border-radius:
-        14px !important;
-
-    background:
-        rgba(9,14,33,0.72) !important;
-}
-
-
-details summary {
-
-    font-size:
-        16px !important;
-
-    font-weight:
-        750 !important;
-}
-
-
-/* ======================================================
-   RESULT HEADINGS
-   ====================================================== */
-
-.stApp h3 {
-
-    color:
-        #f3f6ff !important;
-
-    font-size:
-        21px !important;
-
-    font-weight:
-        850 !important;
-}
-
-
-/* ======================================================
-   STATUS CHIPS
-   ====================================================== */
-
-.chips {
-
-    display:
-        flex;
-
-    flex-wrap:
-        wrap;
-
-    gap:
-        10px;
-
-    margin-top:
-        18px;
-
-    margin-bottom:
-        21px;
-}
-
-
-.chip {
-
-    padding:
-        8px 12px;
-
-    border-radius:
-        9px;
-
-    font-size:
-        13px;
-
-    font-weight:
-        850;
-
-    letter-spacing:
-        0.4px;
-}
-
-
-.chip-green {
-
-    color:
-        #afffc7;
-
-    border:
-        1px solid rgba(112,245,160,0.31);
-
-    background:
-        rgba(112,245,160,0.08);
-}
-
-
-.chip-yellow {
-
-    color:
-        #ffdc8d;
-
-    border:
-        1px solid rgba(255,200,93,0.30);
-
-    background:
-        rgba(255,200,93,0.08);
-}
-
-
-.chip-red {
-
-    color:
-        #ffa1b5;
-
-    border:
-        1px solid rgba(255,105,137,0.30);
-
-    background:
-        rgba(255,105,137,0.08);
-}
-
-
-/* ======================================================
-   PROGRESS
-   ====================================================== */
-
-[data-testid="stProgress"] {
-
-    margin-top:
-        13px;
-
-    margin-bottom:
-        15px;
-}
-
-
-[data-testid="stProgress"] p {
-
-    color:
-        #a3afca !important;
-
-    font-size:
-        15px !important;
-}
-
-
-/* ======================================================
-   DIVIDERS
-   ====================================================== */
-
-hr {
-
-    border:
-        none;
-
-    border-top:
-        1px solid rgba(255,255,255,0.09);
-
-    margin:
-        55px 0;
-}
-
-
-/* ======================================================
-   FOOTER
-   ====================================================== */
-
-.footer {
-
-    display:
-        flex;
-
-    justify-content:
-        space-between;
-
-    gap:
-        20px;
-
-    margin-top:
-        95px;
-
-    padding-top:
-        28px;
-
-    border-top:
-        1px solid rgba(255,255,255,0.10);
-
-    color:
-        #8492b1;
-
-    font-size:
-        14px;
-
-    font-weight:
-        700;
-}
-
-
-/* ======================================================
-   MOBILE
-   ====================================================== */
-
-@media (max-width: 800px) {
-
-    .block-container {
-
-        padding-left:
-            1.2rem;
-
-        padding-right:
-            1.2rem;
-    }
-
-
-    .hero {
-
-        min-height:
-            auto;
-
-        padding:
-            52px 29px;
-
-        border-radius:
-            22px;
-    }
-
-
-    .hero-title {
-
-        font-size:
-            56px;
-
-        letter-spacing:
-            -3px;
-    }
-
-
-    .hero-copy {
-
-        font-size:
-            18px;
-    }
-
-
-    .section-title {
-
-        font-size:
-            46px;
-    }
-
-
-    .topbar,
-    .footer {
-
-        flex-direction:
-            column;
-
-        align-items:
-            flex-start;
-    }
-}
-
-</style>
-""",
-    unsafe_allow_html=True
-)
-
-
-# Small click ripple that appears exactly where the user clicks.
-components.html(
-    """
-<script>
-(function () {
-    const doc = window.parent.document;
-
-    if (!doc.getElementById("helai-click-ripple-style")) {
-        const style = doc.createElement("style");
-        style.id = "helai-click-ripple-style";
-        style.textContent = `
-            .helai-click-ripple {
-                position: fixed;
-                left: 0;
-                top: 0;
-                width: 28px;
-                height: 28px;
-                border: 1px solid rgba(255, 255, 255, .28);
-                border-radius: 50%;
-                pointer-events: none;
-                z-index: 2147483647;
-                transform: translate(-50%, -50%) scale(.86);
-                animation: helaiClickRipple .42s ease-out forwards;
-            }
-
-            @keyframes helaiClickRipple {
-                0% {
-                    opacity: .75;
-                    transform: translate(-50%, -50%) scale(.86);
-                }
-
-                100% {
-                    opacity: 0;
-                    transform: translate(-50%, -50%) scale(1.65);
-                }
-            }
-        `;
-
-        doc.head.appendChild(style);
-    }
-
-    if (!doc.documentElement.dataset.helaiClickRippleReady) {
-        doc.documentElement.dataset.helaiClickRippleReady = "1";
-
-        doc.addEventListener(
-            "pointerdown",
-            function (event) {
-                const ripple = doc.createElement("div");
-                ripple.className = "helai-click-ripple";
-                ripple.style.left = event.clientX + "px";
-                ripple.style.top = event.clientY + "px";
-
-                doc.body.appendChild(ripple);
-
-                window.setTimeout(function () {
-                    ripple.remove();
-                }, 560);
-            },
-            true
-        );
-    }
-})();
-</script>
-""",
-    height=0,
-    width=0,
-)
+inject_global_styles()
 
 
 # =========================================================
@@ -1587,325 +171,150 @@ def load_cloud_profile():
 # =========================================================
 
 if not st.session_state.access_token:
+    st.html('<div class="auth-page-marker"></div>')
 
-    with st.sidebar:
+    auth_intro, auth_panel = st.columns([1.12, 0.88], gap="large")
 
-        st.title("HELAI")
-
-        st.caption(
-            "Your multilingual AI agent for global opportunities."
+    with auth_intro:
+        st.html(
+            """
+            <section class="auth-shell">
+                <div class="auth-wordmark">HELAI</div>
+                <div class="auth-eyebrow">Opportunity intelligence</div>
+                <h1 class="auth-title">Your AI agent for global opportunities.</h1>
+                <div class="auth-copy">
+                    Discover opportunities, understand eligibility, and prepare stronger
+                    applications with one multilingual profile.
+                </div>
+                <div class="auth-features">
+                    <span class="auth-feature">AI Opportunity Discovery</span>
+                    <span class="auth-feature">Smart Eligibility</span>
+                    <span class="auth-feature">Personalized Matching</span>
+                    <span class="auth-feature">Kurdish / English</span>
+                    <span class="auth-feature">Application Readiness</span>
+                </div>
+            </section>
+            """
         )
 
-        st.divider()
+    with auth_panel:
+        st.html(
+            """
+            <div class="auth-panel-intro">
+                <h2 class="auth-panel-title">Welcome to HelAI</h2>
+                <div class="auth-panel-copy">Sign in to continue or create your secure cloud profile.</div>
+            </div>
+            """
+        )
 
-        st.markdown("### WHAT HELAI DOES")
+        sign_in_tab, sign_up_tab = st.tabs(["Sign in", "Create account"])
 
-        st.write("01  Understands opportunity announcements")
-        st.write("02  Builds a persistent user profile")
-        st.write("03  Checks relevance and eligibility")
-        st.write("04  Measures application readiness")
-        st.write("05  Shows what can unlock more opportunities")
-
-        st.divider()
-
-        st.caption("Secure account data powered by Supabase")
-        st.caption("AI Olympiad Kurdistan 2026")
-
-
-    st.html(
-        """
-<div class="topbar">
-
-    <div>
-        HELAI
-    </div>
-
-    <div>
-        GLOBAL OPPORTUNITY AGENT / 2026
-    </div>
-
-</div>
-"""
-    )
-
-
-    st.html(
-        f"""
-<section class="hero">
-
-    <div class="hero-badge">
-        ● AI-POWERED GLOBAL OPPORTUNITY AGENT
-    </div>
-
-    <h1 class="hero-title">
-
-        GLOBAL<br>
-
-        <span class="gradient-word">
-            OPPORTUNITIES.
-        </span>
-
-    </h1>
-
-    <div class="mission-statement">
-
-        {MISSION_STATEMENT_HTML}
-
-    </div>
-
-    <div class="hero-chips">
-
-        <span class="hero-chip">
-            MULTILINGUAL AI
-        </span>
-
-        <span class="hero-chip">
-            CLOUD PROFILE
-        </span>
-
-        <span class="hero-chip">
-            ELIGIBILITY
-        </span>
-
-        <span class="hero-chip">
-            READINESS
-        </span>
-
-        <span class="hero-chip">
-            OPPORTUNITY BOOSTER
-        </span>
-
-    </div>
-
-</section>
-"""
-    )
-
-
-    st.html(
-        """
-<div class="section">
-
-    <div class="section-index">
-        HELAI ACCOUNT
-    </div>
-
-    <div class="section-title">
-        SIGN IN OR<br>
-        CREATE ACCOUNT.
-    </div>
-
-    <div class="section-copy">
-
-        Your profile is stored securely in the cloud so HelAI
-        can keep your opportunity preferences and eligibility
-        signals available across sessions.
-
-    </div>
-
-</div>
-"""
-    )
-
-
-    sign_in_tab, sign_up_tab = st.tabs(
-        [
-            "SIGN IN",
-            "CREATE ACCOUNT",
-        ]
-    )
-
-
-    with sign_in_tab:
-
-        with st.form("helai_sign_in_form"):
-
-            login_email = st.text_input(
-                "Email",
-                placeholder="you@example.com",
-            )
-
-            login_password = st.text_input(
-                "Password",
-                type="password",
-            )
-
-            login_submitted = st.form_submit_button(
-                "SIGN IN TO HELAI →",
-                use_container_width=True,
-            )
-
-
-        if login_submitted:
-
-            if not login_email.strip() or not login_password:
-
-                st.warning(
-                    "Enter your email and password."
+        with sign_in_tab:
+            with st.form("helai_sign_in_form_v2"):
+                login_email = st.text_input(
+                    "Email address",
+                    placeholder="you@example.com",
+                    key="login_email_v2",
+                )
+                login_password = st.text_input(
+                    "Password",
+                    type="password",
+                    key="login_password_v2",
+                )
+                login_submitted = st.form_submit_button(
+                    "Sign in to HelAI",
+                    use_container_width=True,
                 )
 
-            else:
-
-                with st.spinner("Signing in..."):
-
-                    login_result = sign_in_user(
-                        email=login_email.strip(),
-                        password=login_password,
-                    )
-
-
-                if login_result["success"]:
-
-                    st.session_state.access_token = (
-                        login_result["access_token"]
-                    )
-
-                    st.session_state.refresh_token = (
-                        login_result["refresh_token"]
-                    )
-
-                    st.session_state.auth_user = (
-                        login_result["user"]
-                    )
-
-                    profile_result = get_profile(
-                        access_token=login_result["access_token"],
-                        refresh_token=login_result["refresh_token"],
-                    )
-
-                    if profile_result["success"]:
-                        st.session_state.cloud_profile = (
-                            profile_result["profile"]
-                        )
-
-                    st.success(
-                        "Signed in successfully."
-                    )
-
-                    st.rerun()
-
+            if login_submitted:
+                if not login_email.strip() or not login_password:
+                    st.warning("Enter your email and password.")
                 else:
-
-                    st.error(
-                        login_result["message"]
-                    )
-
-
-    with sign_up_tab:
-
-        with st.form("helai_sign_up_form"):
-
-            signup_name = st.text_input(
-                "Full Name",
-                placeholder="Your full name",
-            )
-
-            signup_email = st.text_input(
-                "Email",
-                placeholder="you@example.com",
-                key="signup_email",
-            )
-
-            signup_password = st.text_input(
-                "Password",
-                type="password",
-                key="signup_password",
-            )
-
-            signup_password_confirm = st.text_input(
-                "Confirm Password",
-                type="password",
-            )
-
-            signup_submitted = st.form_submit_button(
-                "CREATE HELAI ACCOUNT →",
-                use_container_width=True,
-            )
-
-
-        if signup_submitted:
-
-            if not signup_name.strip():
-
-                st.warning(
-                    "Enter your full name."
-                )
-
-            elif not signup_email.strip():
-
-                st.warning(
-                    "Enter your email."
-                )
-
-            elif len(signup_password) < 6:
-
-                st.warning(
-                    "Use a password with at least 6 characters."
-                )
-
-            elif signup_password != signup_password_confirm:
-
-                st.warning(
-                    "The two passwords do not match."
-                )
-
-            else:
-
-                with st.spinner("Creating your HelAI account..."):
-
-                    signup_result = sign_up_user(
-                        email=signup_email.strip(),
-                        password=signup_password,
-                        full_name=signup_name.strip(),
-                    )
-
-
-                if signup_result["success"]:
-
-                    signup_session = signup_result.get(
-                        "session"
-                    )
-
-                    if signup_session:
-
-                        st.session_state.access_token = (
-                            signup_session.access_token
+                    with st.spinner("Signing in securely..."):
+                        login_result = sign_in_user(
+                            email=login_email.strip(),
+                            password=login_password,
                         )
 
-                        st.session_state.refresh_token = (
-                            signup_session.refresh_token
+                    if login_result["success"]:
+                        st.session_state.access_token = login_result["access_token"]
+                        st.session_state.refresh_token = login_result["refresh_token"]
+                        st.session_state.auth_user = login_result["user"]
+                        profile_result = get_profile(
+                            access_token=login_result["access_token"],
+                            refresh_token=login_result["refresh_token"],
                         )
-
-                        st.session_state.auth_user = {
-                            "id": signup_result["user_id"],
-                            "email": signup_result["email"],
-                        }
-
-                        load_cloud_profile()
-
-                        st.success(
-                            "Account created and signed in."
-                        )
-
+                        if profile_result["success"]:
+                            st.session_state.cloud_profile = profile_result["profile"]
+                        st.success("Signed in successfully.")
                         st.rerun()
-
                     else:
+                        st.error(login_result["message"])
 
-                        st.success(
-                            signup_result["message"]
-                        )
+        with sign_up_tab:
+            with st.form("helai_sign_up_form_v2"):
+                signup_name = st.text_input(
+                    "Full name",
+                    placeholder="Your full name",
+                    key="signup_name_v2",
+                )
+                signup_email = st.text_input(
+                    "Email address",
+                    placeholder="you@example.com",
+                    key="signup_email_v2",
+                )
+                signup_password = st.text_input(
+                    "Password",
+                    type="password",
+                    key="signup_password_v2",
+                    help="Use at least 6 characters.",
+                )
+                signup_password_confirm = st.text_input(
+                    "Confirm password",
+                    type="password",
+                    key="signup_password_confirm_v2",
+                )
+                signup_submitted = st.form_submit_button(
+                    "Create HelAI account",
+                    use_container_width=True,
+                )
 
-                        st.info(
-                            "After confirming your email, return here "
-                            "and sign in."
-                        )
-
+            if signup_submitted:
+                if not signup_name.strip():
+                    st.warning("Enter your full name.")
+                elif not signup_email.strip():
+                    st.warning("Enter your email.")
+                elif len(signup_password) < 6:
+                    st.warning("Use a password with at least 6 characters.")
+                elif signup_password != signup_password_confirm:
+                    st.warning("The two passwords do not match.")
                 else:
+                    with st.spinner("Creating your secure HelAI account..."):
+                        signup_result = sign_up_user(
+                            email=signup_email.strip(),
+                            password=signup_password,
+                            full_name=signup_name.strip(),
+                        )
 
-                    st.error(
-                        signup_result["message"]
-                    )
-
+                    if signup_result["success"]:
+                        signup_session = signup_result.get("session")
+                        if signup_session:
+                            st.session_state.access_token = signup_session.access_token
+                            st.session_state.refresh_token = signup_session.refresh_token
+                            st.session_state.auth_user = {
+                                "id": signup_result["user_id"],
+                                "email": signup_result["email"],
+                            }
+                            load_cloud_profile()
+                            st.success("Account created and signed in.")
+                            st.rerun()
+                        else:
+                            st.success(signup_result["message"])
+                            st.info(
+                                "After confirming your email, return here and sign in."
+                            )
+                    else:
+                        st.error(signup_result["message"])
 
     st.stop()
 
@@ -1939,134 +348,89 @@ if st.session_state.cloud_profile is None:
 # SIDEBAR
 # =========================================================
 
-with st.sidebar:
+account_email = ""
+if st.session_state.auth_user:
+    account_email = st.session_state.auth_user.get("email") or ""
+if not account_email and st.session_state.cloud_profile:
+    account_email = st.session_state.cloud_profile.get("email") or ""
 
-    st.title("HELAI")
+account_name = "HelAI user"
+profile_complete = False
+if st.session_state.cloud_profile:
+    account_name = st.session_state.cloud_profile.get("full_name") or account_name
+    profile_complete = bool(st.session_state.cloud_profile.get("profile_complete", False))
 
-    st.caption(
-        "Your AI agent for global opportunity discovery, "
-        "matching and readiness."
+initials = "".join(
+    part[0].upper() for part in account_name.split()[:2] if part
+) or "HA"
+
+source_status = load_source_status()
+source_rows = []
+for source in get_source_catalog():
+    status = source_status.get(source["key"], {})
+    label = source["source_name"]
+    last_status = status.get("last_status", "active")
+    discovered = status.get("discovered")
+    imported = status.get("imported")
+    run_detail = str(last_status).replace("_", " ").title()
+    if discovered is not None and imported is not None:
+        run_detail = f"{discovered} found · {imported} imported"
+    source_health = "danger" if str(last_status).lower() in {"error", "failed"} else ""
+    source_rows.append(
+        f"""
+        <div class="source-row">
+            <span class="source-dot {source_health}"></span>
+            <div><div class="source-name">{html.escape(label)}</div>
+            <div class="source-meta">{html.escape(run_detail)}</div></div>
+        </div>
+        """
     )
 
-    st.divider()
+with st.sidebar:
 
-    st.markdown("### ACCOUNT")
+    st.html(
+        f"""
+        <div class="sidebar-brand">
+            <div class="brand-mark">H</div>
+            <div><div class="brand-name">HelAI</div>
+            <div class="brand-subtitle">Opportunity Intelligence</div></div>
+        </div>
+        <div class="sidebar-label">Account</div>
+        <div class="account-card">
+            <div class="account-avatar">{html.escape(initials)}</div>
+            <div><div class="account-name">{html.escape(account_name)}</div>
+            <div class="account-email">{html.escape(account_email)}</div>
+            <div class="account-status">{"Cloud profile ready" if profile_complete else "Profile setup in progress"}</div></div>
+        </div>
+        <div class="sidebar-label">Workspace</div>
+        <nav class="side-nav">
+            <a class="side-nav-row" href="#ai-import"><span class="side-nav-number">01</span>AI Import</a>
+            <a class="side-nav-row" href="#cloud-profile"><span class="side-nav-number">02</span>Cloud Profile</a>
+            <a class="side-nav-row" href="#opportunity-map"><span class="side-nav-number">03</span>Opportunity Map</a>
+            <a class="side-nav-row" href="#opportunity-booster"><span class="side-nav-number">04</span>Opportunity Booster</a>
+        </nav>
+        <div class="sidebar-label">Opportunity sources</div>
+        <div class="source-list">{"".join(source_rows)}</div>
+        """
+    )
 
-    account_email = ""
-
-    if st.session_state.auth_user:
-        account_email = (
-            st.session_state.auth_user.get("email")
-            or ""
-        )
-
-    if not account_email and st.session_state.cloud_profile:
-        account_email = (
-            st.session_state.cloud_profile.get("email")
-            or ""
-        )
-
-    if account_email:
-        st.caption(account_email)
-
-    if st.session_state.cloud_profile:
-
-        account_name = (
-            st.session_state.cloud_profile.get("full_name")
-            or ""
-        )
-
-        if account_name:
-            st.write(account_name)
-
-        if st.session_state.cloud_profile.get(
-            "profile_complete",
-            False,
-        ):
-            st.success("Cloud profile ready")
-        else:
-            st.info("Complete your profile below")
-
+    st.html(
+        f'<div class="source-meta" style="padding: 10px 4px 0;">{len(opportunities)} opportunities loaded</div>'
+    )
 
     if st.button(
-        "LOG OUT",
+        "Sign out",
         use_container_width=True,
-        key="logout_button",
+        key="helai_sign_out",
+        type="secondary",
+        icon=":material/logout:",
     ):
-
         sign_out_user(
             access_token=st.session_state.access_token,
             refresh_token=st.session_state.refresh_token,
         )
-
         clear_auth_state()
-
         st.rerun()
-
-
-    st.divider()
-
-    st.markdown("### SYSTEM")
-
-    st.write("01  AI extraction")
-    st.write("02  Cloud profile")
-    st.write("03  Relevance matching")
-    st.write("04  Eligibility")
-    st.write("05  Readiness")
-    st.write("06  Opportunity Booster")
-
-    st.divider()
-
-    st.markdown("### OPPORTUNITY SOURCES")
-
-    source_status = load_source_status()
-
-    for source in get_source_catalog():
-        key = source["key"]
-        status = source_status.get(key, {})
-        label = source["source_name"]
-
-        if status:
-            last_status = status.get(
-                "last_status",
-                "unknown",
-            )
-
-            imported = status.get(
-                "imported"
-            )
-
-            discovered = status.get(
-                "discovered"
-            )
-
-            st.caption(
-                f"{label} - {last_status}"
-            )
-
-            if (
-                discovered is not None
-                and imported is not None
-            ):
-                st.caption(
-                    f"Last run: {discovered} found, "
-                    f"{imported} imported"
-                )
-
-        else:
-            st.caption(
-                f"{label} - active"
-            )
-
-    st.divider()
-
-    st.caption(
-        f"{len(opportunities)} opportunities loaded"
-    )
-
-    st.caption(
-        "AI Olympiad Kurdistan 2026"
-    )
 
 
 # =========================================================
@@ -2095,103 +459,61 @@ st.html(
 # =========================================================
 
 st.html(
-    f"""
-<section class="hero">
-
-    <div class="hero-badge">
-        ● AI-POWERED GLOBAL OPPORTUNITY INTELLIGENCE
-    </div>
-
-    <h1 class="hero-title">
-
-        FIND WHAT<br>
-
-        <span class="gradient-word">
-            FITS YOU.
-        </span>
-
-    </h1>
-
-    <div class="mission-statement">
-
-        {MISSION_STATEMENT_HTML}
-
-    </div>
-
-    <div class="hero-chips">
-
-        <span class="hero-chip">
-            MULTILINGUAL AI
-        </span>
-
-        <span class="hero-chip">
-            CLOUD PROFILE
-        </span>
-
-        <span class="hero-chip">
-            MATCH SCORE
-        </span>
-
-        <span class="hero-chip">
-            ELIGIBILITY
-        </span>
-
-        <span class="hero-chip">
-            OPPORTUNITY BOOSTER
-        </span>
-
-    </div>
-
-</section>
-"""
+    """
+    <section class="product-hero">
+        <div class="section-eyebrow">AI-powered global opportunity intelligence</div>
+        <h1 class="hero-title">Find opportunities<br><span class="gradient-word">built for you.</span></h1>
+        <div class="hero-copy">
+            HelAI discovers global opportunities, understands their requirements,
+            and turns your profile into clear eligibility and readiness guidance.
+        </div>
+        <div class="hero-chips">
+            <span class="hero-chip">Multilingual AI</span>
+            <span class="hero-chip">Cloud Profile</span>
+            <span class="hero-chip">Match Score</span>
+            <span class="hero-chip">Eligibility</span>
+            <span class="hero-chip">Readiness</span>
+        </div>
+    </section>
+    """
 )
-
 
 # =========================================================
 # SECTION 01 — AI IMPORT
 # =========================================================
 
-st.html(
-    """
-<div class="section">
-
-    <div class="section-index">
-        01 / AI IMPORT
-    </div>
-
-    <div class="section-title">
-        PASTE ANY<br>
-        OPPORTUNITY.
-    </div>
-
-    <div class="section-copy">
-
-        Copy an opportunity from Facebook, Telegram,
-        a website, email or another source. It can be
-        Kurdish, Arabic, English or mixed. The AI converts
-        the announcement into structured requirements.
-
-    </div>
-
-</div>
-"""
+section_header(
+    "01",
+    "AI Import",
+    "Paste any opportunity.",
+    "Add an announcement in Kurdish, Arabic, English, or mixed text. HelAI turns it into structured requirements.",
+    "ai-import",
 )
 
-
-announcement_text = st.text_area(
-    "Opportunity announcement",
-    height=230,
-    placeholder=(
-        "Paste a scholarship, competition, training, "
-        "internship, fellowship or grant announcement..."
+with st.container(border=True):
+    st.html(
+        """
+        <div class="workspace-heading"><span class="spark">✦</span>AI extraction workspace</div>
+        <div class="workspace-copy">Paste the complete announcement for the most accurate eligibility and deadline extraction.</div>
+        """
     )
-)
+    announcement_text = st.text_area(
+        "Opportunity announcement",
+        height=230,
+        placeholder=(
+            "Paste a scholarship, competition, training, "
+            "internship, fellowship or grant announcement..."
+        ),
+        help="HelAI accepts Kurdish, Arabic, English, and mixed-language announcements.",
+    )
+    analyze_requested = st.button(
+        "Analyze with AI",
+        use_container_width=True,
+        type="primary",
+    )
 
 
-if st.button(
-    "ANALYZE WITH AI →",
-    use_container_width=True
-):
+if analyze_requested:
 
     if not announcement_text.strip():
 
@@ -2550,41 +872,13 @@ if st.session_state.ai_imported_opportunity:
 # SECTION 02 — PROFILE
 # =========================================================
 
-st.html(
-    """
-<div class="section">
-
-    <div class="section-index">
-        02 / CLOUD PROFILE
-    </div>
-
-    <div class="section-title">
-        BUILD YOUR<br>
-        SIGNAL.
-    </div>
-
-    <div class="section-copy">
-
-        Your profile is saved in Supabase. HelAI uses your
-        education, residence, languages, skills, interests,
-        experience and application documents as matching
-        signals.
-
-    </div>
-
-</div>
-
-<div class="explainer">
-
-    <strong>MATCH</strong> measures relevance.
-    <strong>ELIGIBILITY</strong> checks mandatory rules.
-    <strong>READINESS</strong> checks whether the documents
-    needed to apply are already available.
-
-</div>
-"""
+section_header(
+    "02",
+    "Cloud Profile",
+    "Build your profile.",
+    "Create one reusable profile for personalized matching, eligibility checks, and application readiness.",
+    "cloud-profile",
 )
-
 
 saved_profile = (
     st.session_state.cloud_profile
@@ -2684,6 +978,15 @@ saved_dob = parse_saved_date(
     )
 )
 
+st.html(
+    """
+    <div class="profile-callout">
+        <span>◎</span>
+        <span><strong>How HelAI uses your profile</strong><br>Match measures relevance, eligibility checks mandatory rules, and readiness tracks application documents.</span>
+    </div>
+    """
+)
+
 
 with st.form(
     "profile_form"
@@ -2696,6 +999,11 @@ with st.form(
 
 
     with left:
+
+        profile_group(
+            "Personal",
+            "Basic identity and residence details used for eligibility checks.",
+        )
 
         full_name = st.text_input(
             "Full Name",
@@ -2748,6 +1056,11 @@ with st.form(
             ),
         )
 
+        profile_group(
+            "Education",
+            "Your current academic level, subject area, and result.",
+        )
+
         education = st.selectbox(
             "Highest Education Level",
             education_options,
@@ -2778,6 +1091,11 @@ with st.form(
             step=0.1,
         )
 
+        profile_group(
+            "Professional",
+            "Experience information used when an opportunity sets a minimum.",
+        )
+
         work_experience_years = st.number_input(
             "Years of Work Experience",
             min_value=0.0,
@@ -2793,6 +1111,11 @@ with st.form(
 
 
     with right:
+
+        profile_group(
+            "Languages & Skills",
+            "Add the capabilities HelAI should use as matching signals.",
+        )
 
         languages = st.multiselect(
             "Languages",
@@ -2810,6 +1133,11 @@ with st.form(
                 skill_options,
                 saved_profile.get("skills"),
             ),
+        )
+
+        profile_group(
+            "Interests & Preferences",
+            "Choose the themes and opportunity types you want to prioritize.",
         )
 
         interests = st.multiselect(
@@ -2844,6 +1172,11 @@ with st.form(
             ),
         )
 
+        profile_group(
+            "Notifications",
+            "Control whether eligible high-quality matches may enter the email queue.",
+        )
+
         email_notifications = st.checkbox(
             "Email me when HelAI finds relevant opportunities",
             value=bool(
@@ -2854,8 +1187,9 @@ with st.form(
             ),
         )
 
-        st.markdown(
-            "### DOCUMENTS"
+        profile_group(
+            "Documents",
+            "Mark the application materials you already have ready.",
         )
 
         has_passport = st.checkbox(
@@ -2900,7 +1234,7 @@ with st.form(
 
 
     submitted = st.form_submit_button(
-        "SAVE PROFILE + ANALYZE →",
+        "Save profile and analyze",
         use_container_width=True,
     )
 
@@ -3067,16 +1401,7 @@ if submitted:
 
 
             results.sort(
-                key=lambda item: (
-                    normalize_status(
-                        item[0].get(
-                            "status"
-                        )
-                    ) == "Open",
-                    item[1]["eligible"],
-                    item[1]["score"],
-                    item[1]["readiness"]
-                ),
+                key=result_sort_key,
                 reverse=True
             )
 
@@ -3092,111 +1417,30 @@ if run_matching:
 
     st.markdown("---")
 
-
-    st.html(
-        """
-<div class="section">
-
-    <div class="section-index">
-        03 / OPPORTUNITY MAP
-    </div>
-
-    <div class="section-title">
-        YOUR BEST<br>
-        OPTIONS.
-    </div>
-
-    <div class="section-copy">
-
-        The system separates relevance from qualification.
-        A highly relevant opportunity can still show as
-        not eligible when a mandatory requirement is missing.
-
-    </div>
-
-</div>
-"""
+    section_header(
+        "03",
+        "Opportunity Map",
+        "Your best options.",
+        "Compare relevance, qualification, and readiness without mixing them into a single score.",
+        "opportunity-map",
     )
 
 
-    open_count = sum(
-        1
-        for opportunity, result in results
-        if normalize_status(
-            opportunity.get("status")
-        ) == "Open"
+    kpis = result_kpis(results)
+
+    render_kpis(
+        [
+            ("Open opportunities", kpis["open"], "Currently actionable", "info"),
+            ("Eligible now", kpis["eligible"], "Mandatory rules met", "success"),
+            ("Ready to apply", kpis["ready"], "Documents complete", "violet"),
+            ("Best match", f"{kpis['best_score']}%", "Highest relevance score", "accent"),
+        ]
     )
 
-
-    eligible_count = sum(
-        1
-        for opportunity, result in results
-        if (
-            normalize_status(
-                opportunity.get("status")
-            ) == "Open"
-            and result["eligible"]
-        )
-    )
-
-
-    ready_count = sum(
-        1
-        for opportunity, result in results
-        if (
-            normalize_status(
-                opportunity.get("status")
-            ) == "Open"
-            and result["eligible"]
-            and result["readiness"] == 100
-        )
-    )
-
-
-    best_score = max(
-        (
-            result["score"]
-            for opportunity, result in results
-            if normalize_status(
-                opportunity.get("status")
-            ) == "Open"
-        ),
-        default=0
-    )
-
-
-    m1, m2, m3, m4 = st.columns(4)
-
-
-    with m1:
-
-        st.metric(
-            "Open Opportunities",
-            open_count
-        )
-
-
-    with m2:
-
-        st.metric(
-            "Eligible Now",
-            eligible_count
-        )
-
-
-    with m3:
-
-        st.metric(
-            "Ready to Apply",
-            ready_count
-        )
-
-
-    with m4:
-
-        st.metric(
-            "Best Match",
-            f"{best_score}%"
+    if not results:
+        render_empty_state(
+            "No matches yet",
+            "Adjust your profile or import an opportunity to generate a new set of relevance, eligibility, and readiness results.",
         )
 
 
@@ -3215,595 +1459,38 @@ if run_matching:
         start=1
     ):
 
-
-        title_safe = html.escape(
-            str(
-                opportunity.get(
-                    "title",
-                    "Untitled Opportunity"
-                )
-            )
-        )
-
-
-        org_safe = html.escape(
-            str(
-                opportunity.get(
-                    "organization",
-                    ""
-                )
-            )
-        )
-
-
-        source_name = (
-            opportunity.get("source_name")
-            or opportunity.get("source")
-            or "Unknown source"
-        )
-
-        source_url = (
-            opportunity.get("source_url")
-            or ""
-        )
-
-        source_name_safe = html.escape(
-            str(source_name)
-        )
-
-
-        opportunity_status = normalize_status(
-            opportunity.get("status")
-        )
-
-        if opportunity_status == "Closed":
-
-            card_class = "card card-red"
-
-
-        elif (
-            opportunity_status == "Open"
-            and
-            result["eligible"]
-            and result["readiness"] == 100
-        ):
-
-            card_class = "card card-green"
-
-
-        elif (
-            opportunity_status == "Open"
-            and result["eligible"]
-        ):
-
-            card_class = "card card-yellow"
-
-
-        else:
-
-            card_class = "card"
-
-
-        ai_tag = ""
-
-
-        if opportunity.get(
-            "is_ai_imported",
-            False
-        ):
-
-            ai_tag = (
-                '<div class="ai-tag">'
-                'AI IMPORTED'
-                '</div>'
-            )
-
-
-        st.html(
-            f"""
-<div class="{card_class}">
-
-    <div class="card-number">
-        {index:02d} / OPPORTUNITY
-    </div>
-
-    <div class="card-title">
-        {title_safe}
-    </div>
-
-    <div class="card-org">
-        {org_safe}
-    </div>
-
-    {ai_tag}
-
-</div>
-"""
-        )
-
-
-        source_html = f"""
-<div class="chips" style="margin-top: 12px;">
-    <span class="chip chip-blue">
-        SOURCE: {source_name_safe}
-    </span>
-</div>
-"""
-
-        st.html(source_html)
-
-        if source_url:
-            st.link_button(
-                "VIEW ORIGINAL SOURCE",
-                source_url,
-                use_container_width=False,
-            )
-
-
-
-        # HELAI LOCALIZED OPPORTUNITY SUMMARY
-
         active_language = str(
-            (
-                st.session_state.cloud_profile
-                or {}
-            ).get(
+            (st.session_state.cloud_profile or {}).get(
                 "preferred_language",
-                "English"
+                "English",
             )
         ).strip()
-
-
-        summary_ku = str(
-            opportunity.get(
-                "summary_ku"
-            )
-            or ""
-        ).strip()
-
-
-        summary_en = str(
-            opportunity.get(
-                "summary_en"
-            )
-            or ""
-        ).strip()
-
-
-        summary_notes = str(
-            opportunity.get(
-                "notes"
-            )
-            or ""
-        ).strip()
-
-
-        if (
-            active_language
-            == "Kurdish Sorani"
-            and summary_ku
-        ):
-
-            summary_safe = (
-                html.escape(
-                    summary_ku
-                )
-                .replace(
-                    "\n",
-                    "<br>"
-                )
-            )
-
-
-            st.html(
-                f"""
-<div
-    dir="rtl"
-    style="
-        margin: 16px 0 24px 0;
-        padding: 20px 22px;
-
-        background:
-            rgba(15, 23, 52, 0.78);
-
-        border:
-            1px solid
-            rgba(130, 151, 255, 0.24);
-
-        border-radius: 14px;
-
-        direction: rtl;
-        text-align: right;
-
-        font-family:
-            Tahoma,
-            Arial,
-            sans-serif;
-
-        line-height: 2;
-
-        color: #e9edfa;
-    "
->
-
-    <div
-        style="
-            margin-bottom: 10px;
-
-            color: #42e5dd;
-
-            font-size: 12px;
-            font-weight: 700;
-
-            letter-spacing: 0.4px;
-        "
-    >
-        پوختەی کوردی
-    </div>
-
-
-    <div
-        style="
-            font-size: 16px;
-        "
-    >
-        {summary_safe}
-    </div>
-
-</div>
-"""
-            )
-
-
-        elif summary_en or summary_notes:
-
-            summary_text = (
-                summary_en
-                or summary_notes
-            )
-
-
-            st.markdown(
-                "#### ABOUT THIS OPPORTUNITY"
-            )
-
-
-            st.write(
-                summary_text
-            )
-
-
-        c1, c2, c3, c4 = st.columns(4)
-
-
-        with c1:
-
-            st.metric(
-                "Match",
-                f"{result['score']}%"
-            )
-
-
-        with c2:
-
-            st.metric(
-                "Eligibility",
-                (
-                    "Eligible"
-                    if result["eligible"]
-                    else "Not Eligible"
-                )
-            )
-
-
-        with c3:
-
-            st.metric(
-                "Readiness",
-                f"{result['readiness']}%"
-            )
-
-
-        with c4:
-
-            st.metric(
-                "Deadline",
-                opportunity.get(
-                    "deadline",
-                    ""
-                ) or "Not stated"
-            )
-
-
-        st.progress(
-            result["score"] / 100,
-            text=(
-                f"Match relevance · "
-                f"{result['score']}%"
-            )
+        render_opportunity_card(
+            opportunity,
+            result,
+            index,
+            active_language,
         )
-
-
-        st.progress(
-            result["readiness"] / 100,
-            text=(
-                f"Application readiness · "
-                f"{result['readiness']}%"
-            )
-        )
-
-
-        status = opportunity.get(
-            "status",
-            ""
-        )
-
-
-        normalized_status = normalize_status(status)
-
-        status_class = (
-            "chip-green"
-            if normalized_status == "Open"
-            else (
-                "chip-yellow"
-                if normalized_status == "Upcoming"
-                else "chip-red"
-            )
-        )
-
-
-        eligibility_class = (
-            "chip-green"
-            if result["eligible"]
-            else "chip-red"
-        )
-
-
-        readiness_class = (
-            "chip-green"
-            if result["readiness"] == 100
-            else "chip-yellow"
-        )
-
-
-        st.html(
-            f"""
-<div class="chips">
-
-    <span class="chip {status_class}">
-        {html.escape(str(normalized_status))}
-    </span>
-
-    <span class="chip {eligibility_class}">
-        {"ELIGIBLE" if result["eligible"] else "NOT ELIGIBLE"}
-    </span>
-
-    <span class="chip {readiness_class}">
-        READY {result["readiness"]}%
-    </span>
-
-</div>
-"""
-        )
-
-
-        if (
-            result["eligible"]
-            and result["readiness"] == 100
-        ):
-
-            st.success(
-                "You appear eligible and ready to apply."
-            )
-
-
-        elif result["eligible"]:
-
-            st.info(
-                "You appear eligible, but there are "
-                "application-readiness tasks remaining."
-            )
-
-
-        else:
-
-            st.warning(
-                "This opportunity may be relevant, "
-                "but you currently miss one or more "
-                "mandatory eligibility requirements."
-            )
-
-
-        why_col, eligibility_col, readiness_col = (
-            st.columns(
-                3,
-                gap="large"
-            )
-        )
-
-
-        with why_col:
-
-            st.markdown(
-                "### WHY IT FITS"
-            )
-
-            if result["reasons"]:
-
-                for reason in result["reasons"]:
-
-                    st.write(
-                        f"＋ {reason}"
-                    )
-
-            else:
-
-                st.caption(
-                    "No positive matching signals."
-                )
-
-
-        with eligibility_col:
-
-            st.markdown(
-                "### ELIGIBILITY"
-            )
-
-            if result["eligibility_gaps"]:
-
-                for issue in result[
-                    "eligibility_gaps"
-                ]:
-
-                    st.write(
-                        f"— {issue}"
-                    )
-
-            else:
-
-                st.success(
-                    "No mandatory eligibility gaps."
-                )
-
-
-        with readiness_col:
-
-            st.markdown(
-                "### READINESS"
-            )
-
-            if result["readiness_gaps"]:
-
-                for issue in result[
-                    "readiness_gaps"
-                ]:
-
-                    st.write(
-                        f"— {issue}"
-                    )
-
-            else:
-
-                st.success(
-                    "No tracked document gaps."
-                )
-
-
-        with st.expander(
-            "VIEW OPPORTUNITY DETAILS"
-        ):
-
-            st.write(
-                "**Type:**",
-                opportunity.get(
-                    "type",
-                    ""
-                )
-            )
-
-            st.write(
-                "**Location:**",
-                opportunity.get(
-                    "location",
-                    ""
-                )
-            )
-
-            st.write(
-                "**Education:**",
-                opportunity.get(
-                    "education",
-                    "Any"
-                )
-            )
-
-            st.write(
-                "**Education rule:**",
-                opportunity.get(
-                    "education_rule",
-                    "minimum"
-                )
-            )
-
-            residency = opportunity.get(
-                "residency_requirement",
-                ""
-            )
-
-            st.write(
-                "**Residency requirement:**",
-                residency or "None specified"
-            )
-
-            notes = opportunity.get(
-                "notes",
-                ""
-            )
-
-            if notes:
-
-                st.write(
-                    "**Notes:**",
-                    notes
-                )
-
-            source = opportunity.get(
-                "source_name",
-                ""
-            ) or opportunity.get("source", "")
-
-            if source:
-
-                st.write(
-                    "**Source:**",
-                    source
-                )
-
-            if source_url:
-
-                st.link_button(
-                    "VIEW ORIGINAL SOURCE",
-                    source_url,
-                )
-
-
-        st.markdown("---")
 
 
     # =====================================================
     # SECTION 04 — BOOSTER
     # =====================================================
 
-    st.html(
-        """
-<div class="section">
-
-    <div class="section-index">
-        04 / OPPORTUNITY BOOSTER
-    </div>
-
-    <div class="section-title">
-        UNLOCK<br>
-        MORE.
-    </div>
-
-    <div class="section-copy">
-
-        Opportunity Booster simulates improvements to your
-        profile and identifies which actions could unlock
-        more opportunities or increase application readiness.
-
-    </div>
-
-</div>
-"""
+    section_header(
+        "04",
+        "Opportunity Booster",
+        "Improve your readiness.",
+        "See practical profile improvements and the matches or application readiness they may unlock.",
+        "opportunity-booster",
     )
-
 
     improvements = analyze_improvements(
         profile,
         matching_opportunities
     )
+
+    render_booster_intro()
 
 
     if improvements:
@@ -3816,64 +1503,7 @@ if run_matching:
             start=1
         ):
 
-
-            safe_label = html.escape(
-                str(
-                    label
-                )
-            )
-
-
-            st.html(
-                f"""
-<div class="card">
-
-    <div class="card-number">
-        BOOST / {rank:02d}
-    </div>
-
-    <div class="card-title">
-        {safe_label}
-    </div>
-
-</div>
-"""
-            )
-
-
-            b1, b2, b3, b4 = st.columns(4)
-
-
-            with b1:
-
-                st.metric(
-                    "Unlocked",
-                    data["unlocked"]
-                )
-
-
-            with b2:
-
-                st.metric(
-                    "Improved",
-                    data["improved"]
-                )
-
-
-            with b3:
-
-                st.metric(
-                    "Match Gain",
-                    f"+{data['score_gain']}"
-                )
-
-
-            with b4:
-
-                st.metric(
-                    "Readiness Gain",
-                    f"+{data['readiness_gain']}"
-                )
+            render_booster_card(label, data, rank)
 
 
     else:

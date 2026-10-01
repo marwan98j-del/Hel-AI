@@ -25,3 +25,6 @@ helai_opportunity_intelligence_backfill_plan.md
 
 # Local temporary directories created by test/runtime tooling
 /tmp*/
+
+# Local AI agent skill packs
+.agents/
