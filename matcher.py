@@ -19,6 +19,13 @@ FAIL_CLOSED_APPLICANT_SOURCES = {
 }
 
 
+# Relevance points for missing data stay below the smallest real evidence:
+# location mismatch (8) and one interest (7.5) or skill (6.25) overlap.
+MISSING_DATA_POINTS = 5
+INTEREST_OVERLAP_FLOOR = 7.5
+SKILL_OVERLAP_FLOOR = 6.25
+
+
 EDUCATION_LEVELS = {
     "High School": 1,
     "Diploma": 2,
@@ -113,7 +120,7 @@ def calculate_location_relevance(profile, opportunity):
     if not user_city or not location:
 
         return (
-            10,
+            MISSING_DATA_POINTS,
             "Location compatibility is neutral"
         )
 
@@ -668,11 +675,12 @@ def calculate_match(profile, opportunity, reference_date=None):
             / len(opportunity_interests)
         )
 
-        relevance_points += (
-            30 * interest_ratio
-        )
-
         if interest_matches:
+
+            relevance_points += max(
+                30 * interest_ratio,
+                INTEREST_OVERLAP_FLOOR
+            )
 
             reasons.append(
                 "Matching interests: "
@@ -685,7 +693,7 @@ def calculate_match(profile, opportunity, reference_date=None):
 
     else:
 
-        relevance_points += 15
+        relevance_points += MISSING_DATA_POINTS
 
     # -----------------------------------------------------
     # SKILLS
@@ -715,11 +723,12 @@ def calculate_match(profile, opportunity, reference_date=None):
             / len(opportunity_skills)
         )
 
-        relevance_points += (
-            25 * skill_ratio
-        )
-
         if skill_matches:
+
+            relevance_points += max(
+                25 * skill_ratio,
+                SKILL_OVERLAP_FLOOR
+            )
 
             reasons.append(
                 "Matching skills: "
@@ -732,7 +741,7 @@ def calculate_match(profile, opportunity, reference_date=None):
 
     else:
 
-        relevance_points += 12.5
+        relevance_points += MISSING_DATA_POINTS
 
     # -----------------------------------------------------
     # FINAL SCORE
