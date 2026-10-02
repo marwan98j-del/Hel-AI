@@ -1,4 +1,5 @@
 import re
+import threading
 import unittest
 from pathlib import Path
 
@@ -69,6 +70,56 @@ class HourlyLimitTests(unittest.TestCase):
         self.assertIsNone(limits.import_block(second, "text", NOW + 600))
 
 
+class PerAccountLimitTests(unittest.TestCase):
+    """The app counts runs per account, so a reload or new session can't reset them."""
+
+    def setUp(self):
+        limits.reset_accounts()
+
+    def tearDown(self):
+        limits.reset_accounts()
+
+    def test_limit_survives_a_new_session_for_the_same_account(self):
+        for index in range(limits.RUNS_PER_HOUR):
+            self.assertIsNone(limits.start_import("user-1", "text", NOW + index))
+        # A reload starts a new Streamlit session but the same account id.
+        key, _values = limits.start_import("user-1", "text", NOW + 100)
+        self.assertEqual(key, "import.rate_limited")
+
+    def test_accounts_are_counted_separately(self):
+        for index in range(limits.RUNS_PER_HOUR):
+            limits.start_import("user-1", "text", NOW + index)
+        self.assertIsNone(limits.start_import("user-2", "text", NOW + 100))
+
+    def test_blocked_attempts_do_not_extend_the_wait(self):
+        for index in range(limits.RUNS_PER_HOUR):
+            limits.start_import("user-1", "text", NOW + index)
+        for attempt in range(10):
+            limits.start_import("user-1", "text", NOW + 100 + attempt)
+        self.assertIsNone(limits.start_import("user-1", "text", NOW + limits.WINDOW_SECONDS))
+
+    def test_too_long_text_is_not_counted(self):
+        limits.start_import("user-1", "x" * (limits.MAX_CHARS + 1), NOW)
+        for index in range(limits.RUNS_PER_HOUR):
+            self.assertIsNone(limits.start_import("user-1", "text", NOW + index + 1))
+
+    def test_parallel_tabs_cannot_pass_the_limit(self):
+        allowed = []
+        start = threading.Barrier(20)
+
+        def click():
+            start.wait()
+            if limits.start_import("user-1", "text", NOW) is None:
+                allowed.append(1)
+
+        threads = [threading.Thread(target=click) for _ in range(20)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        self.assertEqual(len(allowed), limits.RUNS_PER_HOUR)
+
+
 class LimitMessageTests(unittest.TestCase):
     def test_messages_in_every_language(self):
         for lang in ("en", "ckb", "ar"):
@@ -90,12 +141,13 @@ class AppWiringTests(unittest.TestCase):
 
     APP = (HERE / "app.py").read_text(encoding="utf-8")
 
-    def test_limits_are_checked_and_counted_before_extraction(self):
-        block = self.APP.index("import_block(st.session_state, announcement_text)")
-        record = self.APP.index("record_run(st.session_state)")
+    def test_limits_are_checked_per_account_before_extraction(self):
+        check = self.APP.index("start_import(current_user_id(), announcement_text)")
         extract = self.APP.index("extract_opportunity(\n")
-        self.assertLess(block, record)
-        self.assertLess(record, extract)
+        self.assertLess(check, extract)
+        # Session-only counting would reset on every reload.
+        self.assertNotIn("import_block(st.session_state", self.APP)
+        self.assertNotIn("record_run(st.session_state", self.APP)
 
     def test_no_raw_errors_reach_visitors(self):
         self.assertNotRegex(self.APP, r"t\([^)]*\b(error|message)=")

@@ -1,10 +1,13 @@
 """Limits on the app's AI import, so one visitor can't run up the OpenAI bill.
 
-Pure functions over a dict-like state (st.session_state in the app), so they
-can be tested without Streamlit. The collector's own extraction is not limited.
+Runs are counted per account in a store that lives as long as the server
+process, so reloading the page or signing in again does not reset them.
+The checks are pure functions over a dict-like state, so they can be tested
+without Streamlit. The collector's own extraction is not limited.
 """
 
 import math
+import threading
 import time
 
 from helai_config import (
@@ -17,6 +20,10 @@ MAX_CHARS = HELAI_IMPORT_MAX_CHARS
 RUNS_PER_HOUR = HELAI_IMPORT_RUNS_PER_HOUR
 WINDOW_SECONDS = 60 * 60
 RUNS_KEY = "helai_import_runs"
+
+# account id -> {RUNS_KEY: [run times]}; shared by every session.
+_accounts = {}
+_accounts_lock = threading.Lock()
 
 
 def recent_runs(state, now=None):
@@ -51,3 +58,26 @@ def record_run(state, now=None):
     """Count a run before calling OpenAI, so failed calls count too."""
     now = time.time() if now is None else now
     state[RUNS_KEY] = recent_runs(state, now) + [now]
+
+
+def start_import(account_id, text, now=None):
+    """Check the limits for one account and count the run, as one step.
+
+    Returns None when the import may run (and the run is counted), else the
+    same (translation key, values) as import_block. The lock keeps two tabs
+    of the same account from both slipping past the limit.
+    """
+    now = time.time() if now is None else now
+
+    with _accounts_lock:
+        state = _accounts.setdefault(str(account_id), {})
+        block = import_block(state, text, now)
+        if block is None:
+            record_run(state, now)
+        return block
+
+
+def reset_accounts():
+    """Forget every account's runs (tests only)."""
+    with _accounts_lock:
+        _accounts.clear()

@@ -6,8 +6,7 @@ from datetime import date, datetime, timezone
 from ai_import_limits import (
     MAX_CHARS as IMPORT_MAX_CHARS,
     RUNS_PER_HOUR as IMPORT_RUNS_PER_HOUR,
-    import_block,
-    record_run,
+    start_import,
 )
 from matcher import calculate_match, analyze_improvements
 from ai_extractor import extract_opportunity
@@ -672,8 +671,9 @@ with feed_column:
         )
 
 
+    # Checks the limits and counts the run for this account in one step.
     import_limit = (
-        import_block(st.session_state, announcement_text)
+        start_import(current_user_id(), announcement_text)
         if analyze_requested and announcement_text.strip()
         else None
     )
@@ -700,8 +700,6 @@ with feed_column:
             )
 
         else:
-
-            record_run(st.session_state)
 
             with st.spinner(
                 t("import.analyzing")
