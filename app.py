@@ -23,6 +23,8 @@ from helai_i18n import (
 )
 from helai_ui import (
     SUN_ICON,
+    feed_limit,
+    feed_page,
     filter_results,
     inject_global_styles,
     language_switcher,
@@ -30,7 +32,7 @@ from helai_ui import (
     profile_completion,
     profile_group,
     render_alerts_card,
-    render_booster_rail,
+    render_booster_card,
     render_deadlines_rail,
     render_empty_state,
     render_header,
@@ -38,6 +40,7 @@ from helai_ui import (
     result_kpis,
     result_sort_key,
     section_header,
+    show_more,
     sign_in_intro_html,
     status_label,
     ticket_html,
@@ -539,10 +542,10 @@ with st.sidebar:
         </div>
         <div class="sidebar-label">{esc("sidebar.workspace")}</div>
         <nav class="side-nav">
-            <a class="side-nav-row" href="#opportunity-map"><span class="side-nav-number">{format_number("01")}</span>{esc("nav.dashboard")}</a>
-            <a class="side-nav-row" href="#opportunity-booster"><span class="side-nav-number">{format_number("02")}</span>{esc("nav.opportunity_booster")}</a>
-            <a class="side-nav-row" href="#ai-import"><span class="side-nav-number">{format_number("03")}</span>{esc("nav.ai_import")}</a>
-            <a class="side-nav-row" href="#cloud-profile"><span class="side-nav-number">{format_number("04")}</span>{esc("nav.cloud_profile")}</a>
+            <a class="side-nav-row" href="#ai-import"><span class="side-nav-number">{format_number("01")}</span>{esc("nav.ai_import")}</a>
+            <a class="side-nav-row" href="#cloud-profile"><span class="side-nav-number">{format_number("02")}</span>{esc("nav.cloud_profile")}</a>
+            <a class="side-nav-row" href="#opportunity-booster"><span class="side-nav-number">{format_number("03")}</span>{esc("nav.opportunity_booster")}</a>
+            <a class="side-nav-row" href="#opportunity-map"><span class="side-nav-number">{format_number("04")}</span>{esc("nav.opportunity_map")}</a>
         </nav>
         <div class="sidebar-label">{esc("sidebar.sources")}</div>
         <div class="source-list">{"".join(source_rows)}</div>
@@ -591,12 +594,942 @@ render_hero(
 
 
 # =========================================================
-# FEED AND RIGHT RAIL
+# MAIN COLUMN AND RIGHT RAIL
+# Sections run 01 AI Import, 02 Cloud Profile, 03 Opportunity
+# Booster and 04 matches; the rail stays beside them.
 # =========================================================
 
 feed_column, rail_column = st.columns([2.4, 1], gap="large")
 
 with feed_column:
+
+    # =========================================================
+    # SECTION 01 — AI IMPORT
+    # =========================================================
+
+    section_header(
+        format_number("01"),
+        t("nav.ai_import"),
+        t("import.title"),
+        t("import.description"),
+        "ai-import",
+    )
+
+    with st.container(border=True):
+        st.html(
+            f"""
+            <div class="workspace-heading"><span class="spark">✦</span>{esc("import.workspace_heading")}</div>
+            <div class="workspace-copy">{esc("import.workspace_copy")}</div>
+            """
+        )
+        announcement_text = st.text_area(
+            t("import.announcement_label"),
+            height=230,
+            placeholder=t("import.announcement_placeholder"),
+            help=t("import.announcement_help"),
+        )
+        analyze_requested = st.button(
+            t("import.analyze_button"),
+            use_container_width=True,
+            type="primary",
+        )
+
+
+    if analyze_requested:
+
+        if not announcement_text.strip():
+
+            st.warning(
+                t("import.paste_first")
+            )
+
+        else:
+
+            with st.spinner(
+                t("import.analyzing")
+            ):
+
+                try:
+
+                    extracted = extract_opportunity(
+                        announcement_text
+                    )
+
+                    extracted["status"] = normalize_status(
+                        extracted.get("status")
+                    )
+
+                    extracted["open_date"] = normalize_open_date(
+                        extracted.get("open_date"),
+                        announcement_text,
+                    )
+
+                    extracted["deadline"] = normalize_deadline(
+                        (
+                            extracted.get("close_date")
+                            or extracted.get("deadline")
+                        ),
+                        announcement_text,
+                    )
+
+                    st.session_state.ai_imported_opportunity = (
+                        extracted
+                    )
+
+                    st.success(
+                        t("import.success")
+                    )
+
+                except Exception as error:
+
+                    st.error(
+                        t("import.failed", error=error)
+                    )
+
+
+    if st.session_state.ai_imported_opportunity:
+
+        extracted = (
+            st.session_state.ai_imported_opportunity
+        )
+
+        title_safe = html.escape(
+            str(
+                extracted.get(
+                    "title",
+                    t("import.untitled")
+                )
+            )
+        )
+
+        org_safe = html.escape(
+            str(
+                extracted.get(
+                    "organization",
+                    ""
+                )
+            )
+        )
+
+        st.html(
+            f"""
+    <div class="card">
+        <div class="card-number">{esc("import.card_number")}</div>
+        <div class="card-title" dir="auto">{title_safe}</div>
+        <div class="card-org" dir="auto">{org_safe}</div>
+        <div class="ai-tag">{esc("import.card_tag")}</div>
+    </div>
+    """
+        )
+
+        a1, a2, a3, a4 = st.columns(4)
+
+        with a1:
+            st.metric(
+                t("field.type"),
+                t_value("type", extracted.get("type", ""), lang),
+            )
+
+        with a2:
+            st.metric(
+                t("field.status"),
+                status_label(extracted.get("status", ""), lang),
+            )
+
+        with a3:
+            st.metric(
+                t("field.location"),
+                extracted.get("location", ""),
+            )
+
+        with a4:
+            st.metric(
+                t("field.deadline"),
+                format_date(extracted.get("deadline", ""), lang),
+            )
+
+        ex1, ex2 = st.columns(
+            2,
+            gap="large"
+        )
+
+        with ex1:
+
+            st.markdown(
+                f"### {t('import.eligibility_data')}"
+            )
+
+            st.write(
+                f"**{t('field.education')}:**",
+                t_value("education", extracted.get("education", "Any"), lang),
+            )
+
+            education_rule = extracted.get(
+                "education_rule",
+                "minimum"
+            )
+
+            st.write(
+                f"**{t('import.education_rule')}:**",
+                (
+                    t("import.rule_exact")
+                    if education_rule == "exact"
+                    else t("import.rule_minimum")
+                )
+            )
+
+            minimum_age = extracted.get(
+                "minimum_age"
+            )
+
+            maximum_age = extracted.get(
+                "maximum_age"
+            )
+
+            if (
+                minimum_age is not None
+                or maximum_age is not None
+            ):
+
+                st.write(
+                    f"**{t('import.age')}:**",
+                    (
+                        f"{format_number(minimum_age) if minimum_age is not None else t('import.no_minimum')}"
+                        f" — "
+                        f"{format_number(maximum_age) if maximum_age is not None else t('import.no_maximum')}"
+                    )
+                )
+
+            residency = extracted.get(
+                "residency_requirement",
+                ""
+            )
+
+            st.write(
+                f"**{t('import.residency')}:**",
+                t_value("city", residency, lang) if residency else t("common.none_detected")
+            )
+
+            applicant_types = extracted.get(
+                "eligible_applicant_types",
+                []
+            )
+
+            st.write(
+                f"**{t('import.applicant_type')}:**",
+                (
+                    ", ".join(applicant_types)
+                    if applicant_types
+                    else extracted.get(
+                        "applicant_type",
+                        ""
+                    )
+                    or t("common.not_stated")
+                )
+            )
+
+            minimum_grade = extracted.get(
+                "minimum_grade",
+                0
+            )
+
+            if minimum_grade:
+
+                st.write(
+                    f"**{t('import.minimum_grade')}:**",
+                    format_percent(minimum_grade)
+                )
+
+            required_work = extracted.get(
+                "minimum_work_experience_years",
+                0
+            )
+
+            if required_work:
+
+                st.write(
+                    f"**{t('import.work_experience')}:**",
+                    t("import.years", years=format_number(required_work))
+                )
+
+        with ex2:
+
+            st.markdown(
+                f"### {t('import.profile_signals')}"
+            )
+
+            st.write(
+                f"**{t('field.languages')}:**",
+                ", ".join(
+                    t_value("language", value, lang)
+                    for value in extracted.get("languages", [])
+                ) or t("common.none_specified")
+            )
+
+            st.write(
+                f"**{t('field.interests')}:**",
+                ", ".join(
+                    t_value("interest", value, lang)
+                    for value in extracted.get("interests", [])
+                ) or t("common.none_specified")
+            )
+
+            st.write(
+                f"**{t('field.skills')}:**",
+                ", ".join(
+                    t_value("skill", value, lang)
+                    for value in extracted.get("skills", [])
+                ) or t("common.none_specified")
+            )
+
+            required_docs = [
+                t(label)
+                for flag, label in (
+                    ("requires_passport", "doc.passport"),
+                    ("requires_ielts", "doc.ielts"),
+                    ("requires_portfolio", "doc.portfolio"),
+                    ("requires_cv", "doc.cv"),
+                )
+                if extracted.get(flag, False)
+            ]
+
+            st.write(
+                f"**{t('import.required_documents')}:**",
+                (
+                    ", ".join(required_docs)
+                    if required_docs
+                    else t("common.none_detected")
+                )
+            )
+
+        with st.expander(
+            t("import.raw_data")
+        ):
+
+            st.json(
+                extracted
+            )
+
+
+    # =========================================================
+    # SECTION 02 — CLOUD PROFILE
+    # =========================================================
+
+    section_header(
+        format_number("02"),
+        t("nav.cloud_profile"),
+        t("profile.title"),
+        t("profile.description"),
+        "cloud-profile",
+    )
+
+
+    # Option values stay English: they are stored in the profile and read by
+    # matching and email code. Only their display labels are translated.
+    city_options = [
+        "Sulaymaniyah",
+        "Erbil",
+        "Duhok",
+        "Halabja",
+        "Kirkuk",
+        "Baghdad",
+        "Other",
+    ]
+
+
+    education_options = [
+        "High School",
+        "Diploma",
+        "Bachelor's Degree",
+        "Master's Degree",
+        "PhD",
+    ]
+
+
+    language_options = [
+        "Kurdish Sorani",
+        "Kurdish Kurmanji",
+        "Arabic",
+        "English",
+        "Persian",
+        "Turkish",
+        "Other",
+    ]
+
+
+    skill_options = [
+        "Artificial Intelligence",
+        "Programming",
+        "Graphic Design",
+        "Social Media",
+        "Digital Media",
+        "Video Editing",
+        "Writing",
+        "Translation",
+        "Microsoft Office",
+        "Data Analysis",
+        "Marketing",
+        "Photography",
+        "Project Management",
+    ]
+
+
+    interest_options = [
+        "Artificial Intelligence",
+        "Technology",
+        "Media",
+        "Digital Media",
+        "Business",
+        "Education",
+        "Entrepreneurship",
+        "Leadership",
+        "Design",
+        "Research",
+        "Environment",
+        "Health",
+        "Culture",
+        "International Programs",
+    ]
+
+
+    opportunity_type_options = [
+        "Scholarships",
+        "Internships",
+        "Competitions",
+        "Training Programs",
+        "Grants",
+        "Fellowships",
+        "Volunteering",
+        "Exchange Programs",
+    ]
+
+
+    preferred_language_options = [
+        "Kurdish Sorani",
+        "English",
+        "Arabic",
+        "Kurdish Kurmanji",
+    ]
+
+
+    saved_dob = parse_saved_date(
+        saved_profile.get(
+            "date_of_birth"
+        )
+    )
+
+
+    # Telegram appears only once the profile has notify_telegram (the Telegram
+    # migration has run); until then the profile works exactly as before.
+    telegram_available = "notify_telegram" in saved_profile
+    telegram_connection = None
+
+    if telegram_available:
+        try:
+            telegram_connection = load_telegram_connection(
+                user_client(),
+                current_user_id(),
+            )
+        except Exception:
+            telegram_available = False
+
+    st.html(
+        f"""
+        <div class="profile-callout">
+            <span>◎</span>
+            <span><strong>{esc("profile.callout_title")}</strong><br>{esc("profile.callout_body")}</span>
+        </div>
+        """
+    )
+
+
+    with st.form(
+        "profile_form"
+    ):
+
+        left, right = st.columns(
+            2,
+            gap="large"
+        )
+
+        with left:
+
+            profile_group(
+                t("profile.group_personal"),
+                t("profile.group_personal_copy"),
+            )
+
+            full_name = st.text_input(
+                t("profile.full_name"),
+                value=(
+                    saved_profile.get("full_name")
+                    or ""
+                ),
+                placeholder=t("auth.full_name_placeholder"),
+            )
+
+            date_of_birth = st.date_input(
+                t("profile.date_of_birth"),
+                value=saved_dob,
+                min_value=date(1940, 1, 1),
+                max_value=date.today(),
+            )
+
+            if date_of_birth:
+
+                st.caption(
+                    t(
+                        "profile.age_used",
+                        age=format_number(calculate_age(date_of_birth)),
+                    )
+                )
+
+            nationality = st.text_input(
+                t("profile.nationality"),
+                value=(
+                    saved_profile.get("nationality")
+                    or ""
+                ),
+                placeholder=t("profile.nationality_placeholder"),
+            )
+
+            country_of_residence = st.text_input(
+                t("profile.country"),
+                value=(
+                    saved_profile.get("country_of_residence")
+                    or ""
+                ),
+                placeholder=t("profile.country_placeholder"),
+            )
+
+            city = st.selectbox(
+                t("profile.city"),
+                city_options,
+                index=safe_index(
+                    city_options,
+                    saved_profile.get("city"),
+                    0,
+                ),
+                format_func=option_label("city"),
+            )
+
+            profile_group(
+                t("profile.group_education"),
+                t("profile.group_education_copy"),
+            )
+
+            education = st.selectbox(
+                t("profile.education_level"),
+                education_options,
+                index=safe_index(
+                    education_options,
+                    saved_profile.get("education"),
+                    0,
+                ),
+                format_func=option_label("education"),
+            )
+
+            field_of_study = st.text_input(
+                t("profile.field_of_study"),
+                value=(
+                    saved_profile.get("field_of_study")
+                    or ""
+                ),
+                placeholder=t("profile.field_of_study_placeholder"),
+            )
+
+            grade = st.number_input(
+                t("profile.grade"),
+                min_value=0.0,
+                max_value=100.0,
+                value=float(
+                    saved_profile.get("grade")
+                    or 0.0
+                ),
+                step=0.1,
+            )
+
+            profile_group(
+                t("profile.group_professional"),
+                t("profile.group_professional_copy"),
+            )
+
+            work_experience_years = st.number_input(
+                t("profile.work_years"),
+                min_value=0.0,
+                max_value=50.0,
+                value=float(
+                    saved_profile.get(
+                        "work_experience_years"
+                    )
+                    or 0.0
+                ),
+                step=0.5,
+            )
+
+        with right:
+
+            profile_group(
+                t("profile.group_languages_skills"),
+                t("profile.group_languages_skills_copy"),
+            )
+
+            languages = st.multiselect(
+                t("field.languages"),
+                language_options,
+                default=safe_multiselect_defaults(
+                    language_options,
+                    saved_profile.get("languages"),
+                ),
+                format_func=option_label("language"),
+                placeholder=t("profile.choose_options"),
+            )
+
+            skills = st.multiselect(
+                t("field.skills"),
+                skill_options,
+                default=safe_multiselect_defaults(
+                    skill_options,
+                    saved_profile.get("skills"),
+                ),
+                format_func=option_label("skill"),
+                placeholder=t("profile.choose_options"),
+            )
+
+            profile_group(
+                t("profile.group_interests"),
+                t("profile.group_interests_copy"),
+            )
+
+            interests = st.multiselect(
+                t("profile.areas_of_interest"),
+                interest_options,
+                default=safe_multiselect_defaults(
+                    interest_options,
+                    saved_profile.get("interests"),
+                ),
+                format_func=option_label("interest"),
+                placeholder=t("profile.choose_options"),
+            )
+
+            opportunity_types = st.multiselect(
+                t("profile.opportunity_types"),
+                opportunity_type_options,
+                default=safe_multiselect_defaults(
+                    opportunity_type_options,
+                    saved_profile.get(
+                        "opportunity_types"
+                    ),
+                ),
+                format_func=option_label("type"),
+                placeholder=t("profile.choose_options"),
+            )
+
+            preferred_language = st.selectbox(
+                t("profile.preferred_language"),
+                preferred_language_options,
+                index=safe_index(
+                    preferred_language_options,
+                    saved_profile.get(
+                        "preferred_language"
+                    ),
+                    0,
+                ),
+                format_func=option_label("language"),
+            )
+
+            profile_group(
+                t("profile.group_notifications"),
+                t("profile.group_notifications_copy"),
+            )
+
+            email_notifications = st.checkbox(
+                t("profile.email_notifications"),
+                value=bool(
+                    saved_profile.get(
+                        "email_notifications",
+                        True,
+                    )
+                ),
+            )
+
+            notify_telegram = False
+
+            if telegram_available:
+                notify_telegram = st.checkbox(
+                    t("profile.telegram_notifications"),
+                    value=(
+                        bool(saved_profile.get("notify_telegram"))
+                        and telegram_connection is not None
+                    ),
+                    disabled=telegram_connection is None,
+                    help=(
+                        None
+                        if telegram_connection
+                        else t("profile.telegram_needs_connection")
+                    ),
+                )
+
+            profile_group(
+                t("profile.group_documents"),
+                t("profile.group_documents_copy"),
+            )
+
+            has_passport = st.checkbox(
+                t("profile.has_passport"),
+                value=bool(
+                    saved_profile.get(
+                        "has_passport",
+                        False,
+                    )
+                ),
+            )
+
+            has_ielts = st.checkbox(
+                t("profile.has_ielts"),
+                value=bool(
+                    saved_profile.get(
+                        "has_ielts",
+                        False,
+                    )
+                ),
+            )
+
+            has_portfolio = st.checkbox(
+                t("profile.has_portfolio"),
+                value=bool(
+                    saved_profile.get(
+                        "has_portfolio",
+                        False,
+                    )
+                ),
+            )
+
+            has_cv = st.checkbox(
+                t("profile.has_cv"),
+                value=bool(
+                    saved_profile.get(
+                        "has_cv",
+                        False,
+                    )
+                ),
+            )
+
+        submitted = st.form_submit_button(
+            t("profile.save_button"),
+            use_container_width=True,
+        )
+
+
+    # =========================================================
+    # SAVE PROFILE
+    # The matches section re-matches from the saved profile on
+    # the rerun that follows a successful save.
+    # =========================================================
+
+    if submitted:
+
+        if not full_name.strip():
+
+            st.warning(
+                t("profile.enter_full_name")
+            )
+
+        elif date_of_birth is None:
+
+            st.warning(
+                t("profile.enter_date_of_birth")
+            )
+
+        else:
+
+            cloud_profile_data = {
+                "full_name": full_name.strip(),
+                "date_of_birth": date_of_birth.isoformat(),
+                "nationality": nationality.strip(),
+                "country_of_residence": (
+                    country_of_residence.strip()
+                ),
+                "city": city,
+                "education": education,
+                "field_of_study": field_of_study.strip(),
+                "grade": float(grade),
+                "work_experience_years": float(
+                    work_experience_years
+                ),
+                "languages": languages,
+                "skills": skills,
+                "interests": interests,
+                "opportunity_types": opportunity_types,
+                "has_passport": has_passport,
+                "has_ielts": has_ielts,
+                "has_portfolio": has_portfolio,
+                "has_cv": has_cv,
+                "preferred_language": preferred_language,
+                "email_notifications": email_notifications,
+                "profile_complete": True,
+            }
+
+            if telegram_available:
+                cloud_profile_data["notify_telegram"] = (
+                    bool(notify_telegram)
+                    and telegram_connection is not None
+                )
+
+            with st.spinner(
+                t("profile.saving")
+            ):
+
+                save_result = update_profile(
+                    access_token=st.session_state.access_token,
+                    refresh_token=st.session_state.refresh_token,
+                    profile_data=cloud_profile_data,
+                )
+
+            if not save_result["success"]:
+
+                st.error(
+                    t("profile.save_failed", message=save_result["message"])
+                )
+
+            else:
+
+                if save_result["profile"]:
+
+                    st.session_state.cloud_profile = (
+                        save_result["profile"]
+                    )
+
+                else:
+
+                    refreshed_profile = get_profile(
+                        access_token=st.session_state.access_token,
+                        refresh_token=st.session_state.refresh_token,
+                    )
+
+                    if refreshed_profile["success"]:
+                        st.session_state.cloud_profile = (
+                            refreshed_profile["profile"]
+                        )
+
+                st.session_state.helai_profile_saved = True
+                st.rerun()
+
+
+    # =========================================================
+    # TELEGRAM CONNECTION
+    # The app only creates a short-lived code; the collector run
+    # links the chat when the user presses Start in Telegram.
+    # =========================================================
+
+    if telegram_available:
+
+        with st.container(border=True):
+
+            profile_group(
+                t("telegram.title"),
+                t("telegram.copy"),
+            )
+
+            if st.session_state.pop("helai_telegram_disconnected", False):
+                st.success(t("telegram.disconnected"))
+
+            if telegram_connection:
+
+                st.success(
+                    t(
+                        "telegram.connected_since",
+                        date=format_date(
+                            str(telegram_connection.get("connected_at") or "")[:10],
+                            lang,
+                        ),
+                    )
+                )
+
+                if st.button(
+                    t("telegram.disconnect_button"),
+                    key="helai_telegram_disconnect",
+                    type="secondary",
+                ):
+                    try:
+                        disconnect_telegram(user_client(), current_user_id())
+                    except Exception as error:
+                        st.error(t("telegram.error", message=error))
+                    else:
+                        if st.session_state.cloud_profile:
+                            st.session_state.cloud_profile["notify_telegram"] = False
+                        st.session_state.pop("helai_telegram_code", None)
+                        st.session_state.helai_telegram_disconnected = True
+                        st.rerun()
+
+            else:
+
+                st.info(t("telegram.not_connected"))
+
+                pending_code = st.session_state.get("helai_telegram_code")
+
+                if pending_code and code_is_pending(pending_code["created_at"]):
+                    st.link_button(
+                        t("telegram.open_bot"),
+                        bot_link(pending_code["code"]),
+                        type="primary",
+                        use_container_width=True,
+                    )
+                    st.caption(
+                        t(
+                            "telegram.code_help",
+                            minutes=format_number(LINK_CODE_MINUTES),
+                            code=pending_code["code"],
+                        )
+                    )
+                    st.caption(t("telegram.pending_help"))
+                else:
+                    pending_code = None
+
+                if st.button(
+                    t("telegram.connect_button"),
+                    key="helai_telegram_connect",
+                    type="secondary" if pending_code else "primary",
+                    use_container_width=True,
+                ):
+                    try:
+                        code = create_link_code(user_client(), current_user_id())
+                    except Exception as error:
+                        st.error(t("telegram.error", message=error))
+                    else:
+                        st.session_state.helai_telegram_code = {
+                            "code": code,
+                            "created_at": datetime.now(timezone.utc).isoformat(),
+                        }
+                        st.rerun()
+
+
+    # =========================================================
+    # SECTION 03 — OPPORTUNITY BOOSTER
+    # =========================================================
+
+    section_header(
+        format_number("03"),
+        t("nav.opportunity_booster"),
+        t("booster.title"),
+        t("booster.description"),
+        "opportunity-booster",
+    )
+
+    render_booster_card(improvements, lang)
+
+
+    # =========================================================
+    # SECTION 04 — MATCHES
+    # =========================================================
+
+    section_header(
+        format_number("04"),
+        t("nav.opportunity_map"),
+        t("map.title"),
+        t("map.description"),
+        "opportunity-map",
+    )
 
     if not profile:
         render_empty_state(
@@ -621,15 +1554,38 @@ with feed_column:
             search_query,
         )
 
+        # Display only: the sorted, filtered list is shown a page at a time.
+        shown, remaining, next_page = feed_page(
+            visible,
+            feed_limit(
+                st.session_state,
+                (filter_mode or "all", search_query.strip().lower()),
+            ),
+        )
+
         if visible:
             st.html(
                 '<div class="feed">'
                 + "".join(
                     ticket_html(opportunity, result, lang)
-                    for opportunity, result in visible
+                    for opportunity, result in shown
                 )
                 + "</div>"
             )
+
+            if remaining:
+                st.button(
+                    t(
+                        "feed.show_more",
+                        count=format_number(next_page),
+                        remaining=format_number(remaining),
+                    ),
+                    key="helai_feed_more",
+                    on_click=show_more,
+                    args=(st.session_state,),
+                    use_container_width=True,
+                    type="secondary",
+                )
         else:
             render_empty_state(
                 t("feed.empty_filter"),
@@ -638,913 +1594,11 @@ with feed_column:
 
 with rail_column:
 
-    render_booster_rail(improvements, lang)
     render_alerts_card(
         bool(saved_profile.get("email_notifications", True)),
         lang,
     )
     render_deadlines_rail(results, lang)
-
-
-# =========================================================
-# SECTION 01 — AI IMPORT
-# =========================================================
-
-section_header(
-    format_number("03"),
-    t("nav.ai_import"),
-    t("import.title"),
-    t("import.description"),
-    "ai-import",
-)
-
-with st.container(border=True):
-    st.html(
-        f"""
-        <div class="workspace-heading"><span class="spark">✦</span>{esc("import.workspace_heading")}</div>
-        <div class="workspace-copy">{esc("import.workspace_copy")}</div>
-        """
-    )
-    announcement_text = st.text_area(
-        t("import.announcement_label"),
-        height=230,
-        placeholder=t("import.announcement_placeholder"),
-        help=t("import.announcement_help"),
-    )
-    analyze_requested = st.button(
-        t("import.analyze_button"),
-        use_container_width=True,
-        type="primary",
-    )
-
-
-if analyze_requested:
-
-    if not announcement_text.strip():
-
-        st.warning(
-            t("import.paste_first")
-        )
-
-    else:
-
-        with st.spinner(
-            t("import.analyzing")
-        ):
-
-            try:
-
-                extracted = extract_opportunity(
-                    announcement_text
-                )
-
-                extracted["status"] = normalize_status(
-                    extracted.get("status")
-                )
-
-                extracted["open_date"] = normalize_open_date(
-                    extracted.get("open_date"),
-                    announcement_text,
-                )
-
-                extracted["deadline"] = normalize_deadline(
-                    (
-                        extracted.get("close_date")
-                        or extracted.get("deadline")
-                    ),
-                    announcement_text,
-                )
-
-                st.session_state.ai_imported_opportunity = (
-                    extracted
-                )
-
-                st.success(
-                    t("import.success")
-                )
-
-            except Exception as error:
-
-                st.error(
-                    t("import.failed", error=error)
-                )
-
-
-if st.session_state.ai_imported_opportunity:
-
-    extracted = (
-        st.session_state.ai_imported_opportunity
-    )
-
-    title_safe = html.escape(
-        str(
-            extracted.get(
-                "title",
-                t("import.untitled")
-            )
-        )
-    )
-
-    org_safe = html.escape(
-        str(
-            extracted.get(
-                "organization",
-                ""
-            )
-        )
-    )
-
-    st.html(
-        f"""
-<div class="card">
-    <div class="card-number">{esc("import.card_number")}</div>
-    <div class="card-title" dir="auto">{title_safe}</div>
-    <div class="card-org" dir="auto">{org_safe}</div>
-    <div class="ai-tag">{esc("import.card_tag")}</div>
-</div>
-"""
-    )
-
-    a1, a2, a3, a4 = st.columns(4)
-
-    with a1:
-        st.metric(
-            t("field.type"),
-            t_value("type", extracted.get("type", ""), lang),
-        )
-
-    with a2:
-        st.metric(
-            t("field.status"),
-            status_label(extracted.get("status", ""), lang),
-        )
-
-    with a3:
-        st.metric(
-            t("field.location"),
-            extracted.get("location", ""),
-        )
-
-    with a4:
-        st.metric(
-            t("field.deadline"),
-            format_date(extracted.get("deadline", ""), lang),
-        )
-
-    ex1, ex2 = st.columns(
-        2,
-        gap="large"
-    )
-
-    with ex1:
-
-        st.markdown(
-            f"### {t('import.eligibility_data')}"
-        )
-
-        st.write(
-            f"**{t('field.education')}:**",
-            t_value("education", extracted.get("education", "Any"), lang),
-        )
-
-        education_rule = extracted.get(
-            "education_rule",
-            "minimum"
-        )
-
-        st.write(
-            f"**{t('import.education_rule')}:**",
-            (
-                t("import.rule_exact")
-                if education_rule == "exact"
-                else t("import.rule_minimum")
-            )
-        )
-
-        minimum_age = extracted.get(
-            "minimum_age"
-        )
-
-        maximum_age = extracted.get(
-            "maximum_age"
-        )
-
-        if (
-            minimum_age is not None
-            or maximum_age is not None
-        ):
-
-            st.write(
-                f"**{t('import.age')}:**",
-                (
-                    f"{format_number(minimum_age) if minimum_age is not None else t('import.no_minimum')}"
-                    f" — "
-                    f"{format_number(maximum_age) if maximum_age is not None else t('import.no_maximum')}"
-                )
-            )
-
-        residency = extracted.get(
-            "residency_requirement",
-            ""
-        )
-
-        st.write(
-            f"**{t('import.residency')}:**",
-            t_value("city", residency, lang) if residency else t("common.none_detected")
-        )
-
-        applicant_types = extracted.get(
-            "eligible_applicant_types",
-            []
-        )
-
-        st.write(
-            f"**{t('import.applicant_type')}:**",
-            (
-                ", ".join(applicant_types)
-                if applicant_types
-                else extracted.get(
-                    "applicant_type",
-                    ""
-                )
-                or t("common.not_stated")
-            )
-        )
-
-        minimum_grade = extracted.get(
-            "minimum_grade",
-            0
-        )
-
-        if minimum_grade:
-
-            st.write(
-                f"**{t('import.minimum_grade')}:**",
-                format_percent(minimum_grade)
-            )
-
-        required_work = extracted.get(
-            "minimum_work_experience_years",
-            0
-        )
-
-        if required_work:
-
-            st.write(
-                f"**{t('import.work_experience')}:**",
-                t("import.years", years=format_number(required_work))
-            )
-
-    with ex2:
-
-        st.markdown(
-            f"### {t('import.profile_signals')}"
-        )
-
-        st.write(
-            f"**{t('field.languages')}:**",
-            ", ".join(
-                t_value("language", value, lang)
-                for value in extracted.get("languages", [])
-            ) or t("common.none_specified")
-        )
-
-        st.write(
-            f"**{t('field.interests')}:**",
-            ", ".join(
-                t_value("interest", value, lang)
-                for value in extracted.get("interests", [])
-            ) or t("common.none_specified")
-        )
-
-        st.write(
-            f"**{t('field.skills')}:**",
-            ", ".join(
-                t_value("skill", value, lang)
-                for value in extracted.get("skills", [])
-            ) or t("common.none_specified")
-        )
-
-        required_docs = [
-            t(label)
-            for flag, label in (
-                ("requires_passport", "doc.passport"),
-                ("requires_ielts", "doc.ielts"),
-                ("requires_portfolio", "doc.portfolio"),
-                ("requires_cv", "doc.cv"),
-            )
-            if extracted.get(flag, False)
-        ]
-
-        st.write(
-            f"**{t('import.required_documents')}:**",
-            (
-                ", ".join(required_docs)
-                if required_docs
-                else t("common.none_detected")
-            )
-        )
-
-    with st.expander(
-        t("import.raw_data")
-    ):
-
-        st.json(
-            extracted
-        )
-
-
-# =========================================================
-# SECTION 02 — PROFILE
-# =========================================================
-
-section_header(
-    format_number("04"),
-    t("nav.cloud_profile"),
-    t("profile.title"),
-    t("profile.description"),
-    "cloud-profile",
-)
-
-
-# Option values stay English: they are stored in the profile and read by
-# matching and email code. Only their display labels are translated.
-city_options = [
-    "Sulaymaniyah",
-    "Erbil",
-    "Duhok",
-    "Halabja",
-    "Kirkuk",
-    "Baghdad",
-    "Other",
-]
-
-
-education_options = [
-    "High School",
-    "Diploma",
-    "Bachelor's Degree",
-    "Master's Degree",
-    "PhD",
-]
-
-
-language_options = [
-    "Kurdish Sorani",
-    "Kurdish Kurmanji",
-    "Arabic",
-    "English",
-    "Persian",
-    "Turkish",
-    "Other",
-]
-
-
-skill_options = [
-    "Artificial Intelligence",
-    "Programming",
-    "Graphic Design",
-    "Social Media",
-    "Digital Media",
-    "Video Editing",
-    "Writing",
-    "Translation",
-    "Microsoft Office",
-    "Data Analysis",
-    "Marketing",
-    "Photography",
-    "Project Management",
-]
-
-
-interest_options = [
-    "Artificial Intelligence",
-    "Technology",
-    "Media",
-    "Digital Media",
-    "Business",
-    "Education",
-    "Entrepreneurship",
-    "Leadership",
-    "Design",
-    "Research",
-    "Environment",
-    "Health",
-    "Culture",
-    "International Programs",
-]
-
-
-opportunity_type_options = [
-    "Scholarships",
-    "Internships",
-    "Competitions",
-    "Training Programs",
-    "Grants",
-    "Fellowships",
-    "Volunteering",
-    "Exchange Programs",
-]
-
-
-preferred_language_options = [
-    "Kurdish Sorani",
-    "English",
-    "Arabic",
-    "Kurdish Kurmanji",
-]
-
-
-saved_dob = parse_saved_date(
-    saved_profile.get(
-        "date_of_birth"
-    )
-)
-
-
-# Telegram appears only once the profile has notify_telegram (the Telegram
-# migration has run); until then the profile works exactly as before.
-telegram_available = "notify_telegram" in saved_profile
-telegram_connection = None
-
-if telegram_available:
-    try:
-        telegram_connection = load_telegram_connection(
-            user_client(),
-            current_user_id(),
-        )
-    except Exception:
-        telegram_available = False
-
-st.html(
-    f"""
-    <div class="profile-callout">
-        <span>◎</span>
-        <span><strong>{esc("profile.callout_title")}</strong><br>{esc("profile.callout_body")}</span>
-    </div>
-    """
-)
-
-
-with st.form(
-    "profile_form"
-):
-
-    left, right = st.columns(
-        2,
-        gap="large"
-    )
-
-    with left:
-
-        profile_group(
-            t("profile.group_personal"),
-            t("profile.group_personal_copy"),
-        )
-
-        full_name = st.text_input(
-            t("profile.full_name"),
-            value=(
-                saved_profile.get("full_name")
-                or ""
-            ),
-            placeholder=t("auth.full_name_placeholder"),
-        )
-
-        date_of_birth = st.date_input(
-            t("profile.date_of_birth"),
-            value=saved_dob,
-            min_value=date(1940, 1, 1),
-            max_value=date.today(),
-        )
-
-        if date_of_birth:
-
-            st.caption(
-                t(
-                    "profile.age_used",
-                    age=format_number(calculate_age(date_of_birth)),
-                )
-            )
-
-        nationality = st.text_input(
-            t("profile.nationality"),
-            value=(
-                saved_profile.get("nationality")
-                or ""
-            ),
-            placeholder=t("profile.nationality_placeholder"),
-        )
-
-        country_of_residence = st.text_input(
-            t("profile.country"),
-            value=(
-                saved_profile.get("country_of_residence")
-                or ""
-            ),
-            placeholder=t("profile.country_placeholder"),
-        )
-
-        city = st.selectbox(
-            t("profile.city"),
-            city_options,
-            index=safe_index(
-                city_options,
-                saved_profile.get("city"),
-                0,
-            ),
-            format_func=option_label("city"),
-        )
-
-        profile_group(
-            t("profile.group_education"),
-            t("profile.group_education_copy"),
-        )
-
-        education = st.selectbox(
-            t("profile.education_level"),
-            education_options,
-            index=safe_index(
-                education_options,
-                saved_profile.get("education"),
-                0,
-            ),
-            format_func=option_label("education"),
-        )
-
-        field_of_study = st.text_input(
-            t("profile.field_of_study"),
-            value=(
-                saved_profile.get("field_of_study")
-                or ""
-            ),
-            placeholder=t("profile.field_of_study_placeholder"),
-        )
-
-        grade = st.number_input(
-            t("profile.grade"),
-            min_value=0.0,
-            max_value=100.0,
-            value=float(
-                saved_profile.get("grade")
-                or 0.0
-            ),
-            step=0.1,
-        )
-
-        profile_group(
-            t("profile.group_professional"),
-            t("profile.group_professional_copy"),
-        )
-
-        work_experience_years = st.number_input(
-            t("profile.work_years"),
-            min_value=0.0,
-            max_value=50.0,
-            value=float(
-                saved_profile.get(
-                    "work_experience_years"
-                )
-                or 0.0
-            ),
-            step=0.5,
-        )
-
-    with right:
-
-        profile_group(
-            t("profile.group_languages_skills"),
-            t("profile.group_languages_skills_copy"),
-        )
-
-        languages = st.multiselect(
-            t("field.languages"),
-            language_options,
-            default=safe_multiselect_defaults(
-                language_options,
-                saved_profile.get("languages"),
-            ),
-            format_func=option_label("language"),
-            placeholder=t("profile.choose_options"),
-        )
-
-        skills = st.multiselect(
-            t("field.skills"),
-            skill_options,
-            default=safe_multiselect_defaults(
-                skill_options,
-                saved_profile.get("skills"),
-            ),
-            format_func=option_label("skill"),
-            placeholder=t("profile.choose_options"),
-        )
-
-        profile_group(
-            t("profile.group_interests"),
-            t("profile.group_interests_copy"),
-        )
-
-        interests = st.multiselect(
-            t("profile.areas_of_interest"),
-            interest_options,
-            default=safe_multiselect_defaults(
-                interest_options,
-                saved_profile.get("interests"),
-            ),
-            format_func=option_label("interest"),
-            placeholder=t("profile.choose_options"),
-        )
-
-        opportunity_types = st.multiselect(
-            t("profile.opportunity_types"),
-            opportunity_type_options,
-            default=safe_multiselect_defaults(
-                opportunity_type_options,
-                saved_profile.get(
-                    "opportunity_types"
-                ),
-            ),
-            format_func=option_label("type"),
-            placeholder=t("profile.choose_options"),
-        )
-
-        preferred_language = st.selectbox(
-            t("profile.preferred_language"),
-            preferred_language_options,
-            index=safe_index(
-                preferred_language_options,
-                saved_profile.get(
-                    "preferred_language"
-                ),
-                0,
-            ),
-            format_func=option_label("language"),
-        )
-
-        profile_group(
-            t("profile.group_notifications"),
-            t("profile.group_notifications_copy"),
-        )
-
-        email_notifications = st.checkbox(
-            t("profile.email_notifications"),
-            value=bool(
-                saved_profile.get(
-                    "email_notifications",
-                    True,
-                )
-            ),
-        )
-
-        notify_telegram = False
-
-        if telegram_available:
-            notify_telegram = st.checkbox(
-                t("profile.telegram_notifications"),
-                value=(
-                    bool(saved_profile.get("notify_telegram"))
-                    and telegram_connection is not None
-                ),
-                disabled=telegram_connection is None,
-                help=(
-                    None
-                    if telegram_connection
-                    else t("profile.telegram_needs_connection")
-                ),
-            )
-
-        profile_group(
-            t("profile.group_documents"),
-            t("profile.group_documents_copy"),
-        )
-
-        has_passport = st.checkbox(
-            t("profile.has_passport"),
-            value=bool(
-                saved_profile.get(
-                    "has_passport",
-                    False,
-                )
-            ),
-        )
-
-        has_ielts = st.checkbox(
-            t("profile.has_ielts"),
-            value=bool(
-                saved_profile.get(
-                    "has_ielts",
-                    False,
-                )
-            ),
-        )
-
-        has_portfolio = st.checkbox(
-            t("profile.has_portfolio"),
-            value=bool(
-                saved_profile.get(
-                    "has_portfolio",
-                    False,
-                )
-            ),
-        )
-
-        has_cv = st.checkbox(
-            t("profile.has_cv"),
-            value=bool(
-                saved_profile.get(
-                    "has_cv",
-                    False,
-                )
-            ),
-        )
-
-    submitted = st.form_submit_button(
-        t("profile.save_button"),
-        use_container_width=True,
-    )
-
-
-# =========================================================
-# SAVE PROFILE
-# The dashboard above re-matches from the saved profile on
-# the rerun that follows a successful save.
-# =========================================================
-
-if submitted:
-
-    if not full_name.strip():
-
-        st.warning(
-            t("profile.enter_full_name")
-        )
-
-    elif date_of_birth is None:
-
-        st.warning(
-            t("profile.enter_date_of_birth")
-        )
-
-    else:
-
-        cloud_profile_data = {
-            "full_name": full_name.strip(),
-            "date_of_birth": date_of_birth.isoformat(),
-            "nationality": nationality.strip(),
-            "country_of_residence": (
-                country_of_residence.strip()
-            ),
-            "city": city,
-            "education": education,
-            "field_of_study": field_of_study.strip(),
-            "grade": float(grade),
-            "work_experience_years": float(
-                work_experience_years
-            ),
-            "languages": languages,
-            "skills": skills,
-            "interests": interests,
-            "opportunity_types": opportunity_types,
-            "has_passport": has_passport,
-            "has_ielts": has_ielts,
-            "has_portfolio": has_portfolio,
-            "has_cv": has_cv,
-            "preferred_language": preferred_language,
-            "email_notifications": email_notifications,
-            "profile_complete": True,
-        }
-
-        if telegram_available:
-            cloud_profile_data["notify_telegram"] = (
-                bool(notify_telegram)
-                and telegram_connection is not None
-            )
-
-        with st.spinner(
-            t("profile.saving")
-        ):
-
-            save_result = update_profile(
-                access_token=st.session_state.access_token,
-                refresh_token=st.session_state.refresh_token,
-                profile_data=cloud_profile_data,
-            )
-
-        if not save_result["success"]:
-
-            st.error(
-                t("profile.save_failed", message=save_result["message"])
-            )
-
-        else:
-
-            if save_result["profile"]:
-
-                st.session_state.cloud_profile = (
-                    save_result["profile"]
-                )
-
-            else:
-
-                refreshed_profile = get_profile(
-                    access_token=st.session_state.access_token,
-                    refresh_token=st.session_state.refresh_token,
-                )
-
-                if refreshed_profile["success"]:
-                    st.session_state.cloud_profile = (
-                        refreshed_profile["profile"]
-                    )
-
-            st.session_state.helai_profile_saved = True
-            st.rerun()
-
-
-# =========================================================
-# TELEGRAM CONNECTION
-# The app only creates a short-lived code; the collector run
-# links the chat when the user presses Start in Telegram.
-# =========================================================
-
-if telegram_available:
-
-    with st.container(border=True):
-
-        profile_group(
-            t("telegram.title"),
-            t("telegram.copy"),
-        )
-
-        if st.session_state.pop("helai_telegram_disconnected", False):
-            st.success(t("telegram.disconnected"))
-
-        if telegram_connection:
-
-            st.success(
-                t(
-                    "telegram.connected_since",
-                    date=format_date(
-                        str(telegram_connection.get("connected_at") or "")[:10],
-                        lang,
-                    ),
-                )
-            )
-
-            if st.button(
-                t("telegram.disconnect_button"),
-                key="helai_telegram_disconnect",
-                type="secondary",
-            ):
-                try:
-                    disconnect_telegram(user_client(), current_user_id())
-                except Exception as error:
-                    st.error(t("telegram.error", message=error))
-                else:
-                    if st.session_state.cloud_profile:
-                        st.session_state.cloud_profile["notify_telegram"] = False
-                    st.session_state.pop("helai_telegram_code", None)
-                    st.session_state.helai_telegram_disconnected = True
-                    st.rerun()
-
-        else:
-
-            st.info(t("telegram.not_connected"))
-
-            pending_code = st.session_state.get("helai_telegram_code")
-
-            if pending_code and code_is_pending(pending_code["created_at"]):
-                st.link_button(
-                    t("telegram.open_bot"),
-                    bot_link(pending_code["code"]),
-                    type="primary",
-                    use_container_width=True,
-                )
-                st.caption(
-                    t(
-                        "telegram.code_help",
-                        minutes=format_number(LINK_CODE_MINUTES),
-                        code=pending_code["code"],
-                    )
-                )
-                st.caption(t("telegram.pending_help"))
-            else:
-                pending_code = None
-
-            if st.button(
-                t("telegram.connect_button"),
-                key="helai_telegram_connect",
-                type="secondary" if pending_code else "primary",
-                use_container_width=True,
-            ):
-                try:
-                    code = create_link_code(user_client(), current_user_id())
-                except Exception as error:
-                    st.error(t("telegram.error", message=error))
-                else:
-                    st.session_state.helai_telegram_code = {
-                        "code": code,
-                        "created_at": datetime.now(timezone.utc).isoformat(),
-                    }
-                    st.rerun()
 
 
 # =========================================================

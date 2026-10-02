@@ -3,10 +3,15 @@ from datetime import date, datetime
 
 from helai_i18n import count_phrase, translate_booster_label
 from helai_ui import (
+    FEED_PAGE_SIZE,
     IRAQ_TIME,
+    feed_limit,
+    feed_page,
     filter_results,
     greeting_key,
     profile_completion,
+    result_sort_key,
+    show_more,
     ticket_html,
 )
 
@@ -228,3 +233,51 @@ class MobileStatGridTests(unittest.TestCase):
         self.assertNotRegex(phone_block, r"\.stat-strip\s*\{[^}]*grid-template-columns")
         tablet_block = BASE_CSS[BASE_CSS.index("@media (max-width: 1100px)"):]
         self.assertRegex(tablet_block, r"\.stat-strip \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); \}")
+
+
+class FeedPagingTests(unittest.TestCase):
+    def test_first_page_then_ten_more_each_time(self):
+        items = list(range(25))
+        self.assertEqual(feed_page(items, FEED_PAGE_SIZE), (items[:10], 15, 10))
+        self.assertEqual(feed_page(items, 20), (items[:20], 5, 5))
+        self.assertEqual(feed_page(items, 30), (items, 0, 0))
+        self.assertEqual(feed_page([], FEED_PAGE_SIZE), ([], 0, 0))
+
+    def test_show_more_grows_the_same_view(self):
+        state = {}
+        view = ("all", "")
+        self.assertEqual(feed_limit(state, view), 10)
+        show_more(state)
+        show_more(state)
+        self.assertEqual(feed_limit(state, view), 30)
+
+    def test_new_filter_or_search_starts_at_one_page(self):
+        state = {}
+        feed_limit(state, ("all", ""))
+        show_more(state)
+        self.assertEqual(feed_limit(state, ("eligible", "")), 10)
+        show_more(state)
+        self.assertEqual(feed_limit(state, ("eligible", "chevening")), 10)
+
+    def test_paging_keeps_sort_order_and_filter(self):
+        results = []
+        for index in range(23):
+            opportunity = dict(OPEN, title=f"Opportunity {index}", deadline=f"2026-11-{index + 1:02d}")
+            result = dict(ELIGIBLE, score=40 + index, eligible=index % 2 == 0)
+            results.append((opportunity, result))
+        results.sort(key=lambda item: result_sort_key(item, TODAY), reverse=True)
+
+        eligible = filter_results(results, "eligible", "", TODAY)
+        shown, remaining, next_page = feed_page(eligible, 10)
+        self.assertEqual(shown, eligible[:10])
+        self.assertTrue(all(result["eligible"] for _opportunity, result in shown))
+        self.assertEqual((remaining, next_page), (len(eligible) - 10, 2))
+
+    def test_show_more_label_in_every_language(self):
+        from helai_i18n import t
+
+        self.assertEqual(t("feed.show_more", lang="en", count="10", remaining="92"), "Show 10 more · 92 remaining")
+        for lang in ("ckb", "ar"):
+            label = t("feed.show_more", lang=lang, count="١٠", remaining="٩٢")
+            self.assertIn("١٠", label)
+            self.assertIn("٩٢", label)

@@ -753,6 +753,30 @@ def is_fully_funded(opportunity: dict) -> bool:
     return bool(FULLY_FUNDED.search(text))
 
 
+FEED_PAGE_SIZE = 10
+FEED_LIMIT_KEY = "helai_feed_limit"
+FEED_VIEW_KEY = "helai_feed_view"
+
+
+def feed_limit(state, view: tuple) -> int:
+    """How many tickets to show; a new filter or search starts again at one page."""
+    if state.get(FEED_VIEW_KEY) != view:
+        state[FEED_VIEW_KEY] = view
+        state[FEED_LIMIT_KEY] = FEED_PAGE_SIZE
+    return state.get(FEED_LIMIT_KEY, FEED_PAGE_SIZE)
+
+
+def show_more(state) -> None:
+    state[FEED_LIMIT_KEY] = state.get(FEED_LIMIT_KEY, FEED_PAGE_SIZE) + FEED_PAGE_SIZE
+
+
+def feed_page(items: list, limit: int) -> tuple[list, int, int]:
+    """(items to show in their existing order, how many remain, size of the next page)."""
+    shown = items[:limit]
+    remaining = len(items) - len(shown)
+    return shown, remaining, min(FEED_PAGE_SIZE, remaining)
+
+
 def filter_results(results: list[tuple[dict, dict]], mode: str, query: str = "", today: date | None = None) -> list:
     query = query.strip().lower()
     filtered = []
@@ -815,7 +839,7 @@ def render_hero(kpis: dict, total_open: int, source_names: list[str], lang: str)
         for label, value, tone in cells
     )
     st.html(
-        f'<section class="hero" id="opportunity-map">'
+        f'<section class="hero">'
         f'<h2 class="hero-headline">{headline}</h2>'
         f'<div class="hero-sub">{subline}</div>'
         f'<div class="stat-strip">{strip}</div></section>'
@@ -952,7 +976,8 @@ def render_opportunity_card(
     st.html(ticket_html(opportunity, result, lang))
 
 
-def render_booster_rail(improvements: list, lang: str) -> None:
+def render_booster_card(improvements: list, lang: str) -> None:
+    """Section 04 body; its section header supplies the title and anchor."""
     rows = "".join(
         f'<div class="boost-row">'
         f'<span class="boost-badge" dir="ltr">+{html.escape(format_number(data["unlocked"] or data["improved"], lang))}</span>'
@@ -962,8 +987,7 @@ def render_booster_rail(improvements: list, lang: str) -> None:
         for label, data in improvements[:5]
     ) or f'<div class="rail-copy">{html.escape(t("booster.all_covered", lang=lang))}</div>'
     st.html(
-        f'<section class="rail-card" id="opportunity-booster">'
-        f'<div class="rail-title">{html.escape(t("nav.opportunity_booster", lang=lang))}</div>{rows}</section>'
+        f'<section class="rail-card">{rows}</section>'
     )
 
 
