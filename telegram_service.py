@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from html import escape
 
 import requests
-from dotenv import load_dotenv
+from helai_env import load_env
 
 from email_service import (
     MAX_ATTEMPTS,
@@ -38,7 +38,7 @@ from telegram_link import (
 )
 
 
-load_dotenv(override=True)
+load_env()
 
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")

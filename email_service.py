@@ -3,7 +3,7 @@ from datetime import date, datetime, timezone
 from html import escape
 
 import requests
-from dotenv import load_dotenv
+from helai_env import load_env
 from supabase import create_client
 
 from helai_config import (
@@ -25,7 +25,7 @@ from helai_i18n import (
 from opportunity_rules import effective_status, has_document_requirements
 
 
-load_dotenv(override=True)
+load_env()
 
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")

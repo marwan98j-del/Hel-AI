@@ -3,6 +3,12 @@ import html
 import sys
 from datetime import date, datetime, timezone
 
+import helai_env
+
+# Before any other HelAI import: the web app gets only the Supabase URL, the
+# publishable key and the OpenAI key, never the collector's secrets.
+helai_env.use_app_secrets()
+
 from ai_import_limits import (
     MAX_CHARS as IMPORT_MAX_CHARS,
     RUNS_PER_HOUR as IMPORT_RUNS_PER_HOUR,

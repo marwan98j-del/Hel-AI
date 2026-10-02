@@ -2,12 +2,12 @@ import os
 import sys
 from datetime import datetime, timezone
 
-from dotenv import load_dotenv
+from helai_env import load_env
 from openai import OpenAI
 from supabase import create_client
 
 
-load_dotenv(override=True)
+load_env()
 
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")

@@ -1,7 +1,7 @@
 import os
 import json
 
-from dotenv import load_dotenv
+from helai_env import load_env
 from openai import OpenAI
 
 
@@ -9,7 +9,7 @@ from openai import OpenAI
 # API SETUP
 # =========================================================
 
-load_dotenv(override=True)
+load_env()
 
 api_key = os.getenv("OPENAI_API_KEY")
 

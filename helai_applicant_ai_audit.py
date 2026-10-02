@@ -12,7 +12,7 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-from dotenv import load_dotenv
+from helai_env import load_env
 from openai import OpenAI
 from supabase import create_client
 
@@ -259,7 +259,7 @@ def hypothetical_impact(matches, profiles, opportunities_by_id, audits_by_id):
 
 
 def load_rows():
-    load_dotenv(override=True)
+    load_env()
     url = os.getenv("SUPABASE_URL")
     key = os.getenv("SUPABASE_SECRET_KEY")
     if not url or not key:

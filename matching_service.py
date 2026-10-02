@@ -1,7 +1,7 @@
 import os
 from datetime import date, datetime, timezone
 
-from dotenv import load_dotenv
+from helai_env import load_env
 from supabase import create_client
 
 from matcher import calculate_match
@@ -13,7 +13,7 @@ from opportunity_rules import (
 )
 
 
-load_dotenv(override=True)
+load_env()
 
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")

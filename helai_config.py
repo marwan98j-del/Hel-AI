@@ -1,9 +1,9 @@
 import os
 
-from dotenv import load_dotenv
+from helai_env import load_env
 
 
-load_dotenv(override=True)
+load_env()
 
 
 def get_bool(name, default=False):

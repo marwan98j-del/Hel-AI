@@ -1,6 +1,6 @@
 import os
 
-from dotenv import load_dotenv
+from helai_env import load_env
 from supabase import create_client, Client
 
 
@@ -8,7 +8,7 @@ from supabase import create_client, Client
 # LOAD ENVIRONMENT VARIABLES
 # =========================================================
 
-load_dotenv(override=True)
+load_env()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")

@@ -4,7 +4,7 @@ import time
 from datetime import datetime, timezone
 from urllib.parse import urlparse
 
-from dotenv import load_dotenv
+from helai_env import load_env
 from supabase import create_client
 
 from ai_extractor import extract_opportunity
@@ -22,7 +22,7 @@ from ukri_discovery import discover_ukri_opportunities
 from ukri_article import read_ukri_opportunity
 
 
-load_dotenv(override=True)
+load_env()
 
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
