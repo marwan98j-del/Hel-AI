@@ -834,18 +834,22 @@ def result_sort_key(item: tuple[dict, dict], today: object = None) -> tuple:
 
 def result_kpis(results: list[tuple[dict, dict]], today: object = None) -> dict:
     """Map KPI counts over (opportunity, result) pairs, using effective status."""
-    open_results = [
-        result
+    open_pairs = [
+        (opportunity, result)
         for opportunity, result in results
         if effective_status(opportunity, today=today) == "Open"
     ]
+    open_results = [result for _, result in open_pairs]
     return {
         "open": len(open_results),
         "eligible": sum(1 for result in open_results if result["eligible"]),
+        # 100% readiness with no tracked documents is not "ready".
         "ready": sum(
             1
-            for result in open_results
-            if result["eligible"] and result["readiness"] == 100
+            for opportunity, result in open_pairs
+            if result["eligible"]
+            and result["readiness"] == 100
+            and has_document_requirements(opportunity)
         ),
         "best_score": max((result["score"] for result in open_results), default=0),
     }

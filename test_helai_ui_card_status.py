@@ -50,7 +50,7 @@ class HelAICardStatusTests(unittest.TestCase):
 
 class HelAIResultSummaryTests(unittest.TestCase):
     def setUp(self):
-        self.live = ({"title": "live", "status": "Open", "deadline": "2026-12-01"}, match(40))
+        self.live = ({"title": "live", "status": "Open", "deadline": "2026-12-01", "requires_cv": True}, match(40))
         self.alias = ({"title": "alias", "status": "active"}, match(30, readiness=50))
         # The opportunity rows store Open, but the deadline has passed; values
         # in the match dicts are deliberately high so only status can explain
@@ -70,6 +70,13 @@ class HelAIResultSummaryTests(unittest.TestCase):
         self.assertEqual(set(titles[2:]), {"expired", "closed"})
         self.assertEqual(result_sort_key(self.expired, today=TODAY)[0], False)
         self.assertEqual(result_sort_key(self.closed, today=TODAY)[0], False)
+
+    def test_ready_excludes_matches_without_document_requirements(self):
+        # Real audit row: eligible, readiness 100, but nothing was checked.
+        no_docs = ({"title": "Data Science Corps (DSC)", "status": "Open"}, match(62))
+        kpis = result_kpis([self.live, no_docs], today=TODAY)
+        self.assertEqual(kpis["eligible"], 2)
+        self.assertEqual(kpis["ready"], 1)
 
     def test_no_open_results_gives_zero_kpis(self):
         kpis = result_kpis([self.expired, self.closed], today=TODAY)
