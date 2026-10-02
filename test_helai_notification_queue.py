@@ -142,5 +142,69 @@ class NotOpenReasonTests(unittest.TestCase):
         self.assertIsNone(notification_service.not_open_reason(opportunity(deadline=None)))
 
 
+class OpenOpportunityRegressionTests(unittest.TestCase):
+    """Real effective_status, no patching: open records must be queued."""
+
+    OPPORTUNITIES = {
+        "future": opportunity("future", deadline=FUTURE),
+        "none": opportunity("none", deadline=None),
+        "past": opportunity("past", deadline=PAST),
+    }
+
+    def run_queue(self, candidates):
+        client = _Client(self.OPPORTUNITIES.values())
+        with (
+            patch.object(notification_service, "collector_supabase", client),
+            patch("notification_service.load_notification_candidates", return_value=candidates),
+            patch("notification_service.load_profile", return_value={
+                "id": "u1", "email": "person@example.com", "email_notifications": True,
+            }),
+            patch("notification_service.load_opportunity", side_effect=self.OPPORTUNITIES.get),
+            patch("notification_service.notification_exists", return_value=False),
+        ):
+            result = notification_service.build_notification_queue()
+        inserted = [call[2]["opportunity_id"] for call in client.calls if call[1] == "insert"]
+        return result, inserted
+
+    def create(self, opportunity_id):
+        client = _Client()
+        with (
+            patch.object(notification_service, "collector_supabase", client),
+            patch("notification_service.load_profile", return_value={
+                "id": "u1", "email": "person@example.com", "email_notifications": True,
+            }),
+            patch("notification_service.load_opportunity", return_value=self.OPPORTUNITIES[opportunity_id]),
+            patch("notification_service.notification_exists", return_value=False),
+        ):
+            return notification_service.create_notification(match("m1", opportunity_id))
+
+    def test_open_with_future_deadline_is_queued(self):
+        result = self.create("future")
+        self.assertTrue(result["created"])
+        self.assertEqual(result["channels"], ["email"])
+
+    def test_open_with_no_deadline_is_queued(self):
+        result = self.create("none")
+        self.assertTrue(result["created"])
+        self.assertEqual(result["channels"], ["email"])
+
+    def test_past_deadline_is_skipped_with_its_deadline(self):
+        result = self.create("past")
+        self.assertFalse(result["created"])
+        self.assertEqual(result["reason"], f"Opportunity is closed (deadline {PAST} passed).")
+
+    def test_whole_queue_queues_both_open_records_and_skips_the_past_one(self):
+        result, inserted = self.run_queue([
+            match("m-future", "future"),
+            match("m-none", "none"),
+            match("m-past", "past"),
+        ])
+        self.assertEqual(sorted(inserted), ["future", "none"])
+        self.assertEqual(result["strong_new_matches"], 2)
+        self.assertEqual(result["queued"], 2)
+        self.assertEqual(result["expired"], 1)
+        self.assertEqual(result["skipped"], 0)
+
+
 if __name__ == "__main__":
     unittest.main()
