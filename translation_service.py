@@ -152,15 +152,9 @@ def build_source_text(opportunity):
     return "\n\n".join(sections)
 
 
-def translate_opportunity(
-    openai_client,
-    opportunity
-):
-    source_text = build_source_text(
-        opportunity
-    )
-
-    prompt = f"""
+def build_translation_prompt(source_text):
+    """Kurdish Sorani summary instructions for one opportunity."""
+    return f"""
 You are the Kurdish Sorani translation and
 opportunity-information agent for HelAI.
 
@@ -195,6 +189,14 @@ ACCURACY REQUIREMENTS:
 - Do not claim that a person is eligible.
   Eligibility is handled separately by HelAI.
 
+TERMINOLOGY (HelAI's Kurdish wording, used across the app and emails):
+
+- For "opportunity" always write هەل (for example هەلەکان, هەلێک).
+  Never write دەرفەت.
+- For "scholarship" always write سکۆڵەرشیپ (for example سکۆڵەرشیپەکان,
+  سکۆڵەرشیپی ...). Never write بورسیە or بۆرسیە.
+- For "fellowship" always write فێلۆشیپ.
+
 STYLE:
 
 - Clear and easy to understand.
@@ -212,6 +214,19 @@ OPPORTUNITY INFORMATION:
 
 {source_text}
 """
+
+
+def translate_opportunity(
+    openai_client,
+    opportunity
+):
+    source_text = build_source_text(
+        opportunity
+    )
+
+    prompt = build_translation_prompt(
+        source_text
+    )
 
     response = openai_client.responses.create(
         model=MODEL,
