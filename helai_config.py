@@ -103,6 +103,16 @@ EMAIL_FROM = get_str(
     "HelAI <onboarding@resend.dev>",
 )
 
+HELAI_IMPORT_MAX_CHARS = get_int(
+    "HELAI_IMPORT_MAX_CHARS",
+    12000,
+)
+
+HELAI_IMPORT_RUNS_PER_HOUR = get_int(
+    "HELAI_IMPORT_RUNS_PER_HOUR",
+    5,
+)
+
 TELEGRAM_TEST_MODE = get_bool(
     "TELEGRAM_TEST_MODE",
     True,

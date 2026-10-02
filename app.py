@@ -1,7 +1,14 @@
 import streamlit as st
 import html
+import sys
 from datetime import date, datetime, timezone
 
+from ai_import_limits import (
+    MAX_CHARS as IMPORT_MAX_CHARS,
+    RUNS_PER_HOUR as IMPORT_RUNS_PER_HOUR,
+    import_block,
+    record_run,
+)
 from matcher import calculate_match, analyze_improvements
 from ai_extractor import extract_opportunity
 from opportunity_service import load_opportunities
@@ -89,6 +96,19 @@ lang = select_language(
 
 
 # =========================================================
+# ERRORS
+# Visitors see a generic translated message; the details go
+# to the server log only.
+# =========================================================
+
+def log_error(context, error):
+    print(
+        f"HelAI {context} failed: {type(error).__name__}: {error}",
+        file=sys.stderr,
+    )
+
+
+# =========================================================
 # LOAD CLOUD OPPORTUNITIES
 # =========================================================
 
@@ -100,7 +120,8 @@ def get_cloud_opportunities():
 try:
     opportunities = get_cloud_opportunities()
 except Exception as error:
-    st.error(t("app.load_error", error=error))
+    log_error("loading opportunities", error)
+    st.error(t("app.load_error"))
     st.stop()
 
 
@@ -328,7 +349,15 @@ if not st.session_state.access_token:
                         st.success(t("auth.signed_in"))
                         st.rerun()
                     else:
-                        st.error(login_result["message"])
+                        message = str(login_result["message"])
+                        log_error("sign-in", message)
+                        st.error(
+                            t(
+                                "auth.email_not_confirmed"
+                                if "not confirmed" in message.lower()
+                                else "auth.sign_in_failed"
+                            )
+                        )
 
         else:
             with st.form("helai_sign_up_form_v2"):
@@ -388,10 +417,11 @@ if not st.session_state.access_token:
                             st.success(t("auth.account_created"))
                             st.rerun()
                         else:
-                            st.success(signup_result["message"])
+                            st.success(t("auth.account_created"))
                             st.info(t("auth.confirm_then_sign_in"))
                     else:
-                        st.error(signup_result["message"])
+                        log_error("sign-up", signup_result["message"])
+                        st.error(t("auth.sign_up_failed"))
 
     st.stop()
 
@@ -633,7 +663,20 @@ with feed_column:
             use_container_width=True,
             type="primary",
         )
+        st.caption(
+            t(
+                "import.limits",
+                chars=format_number(IMPORT_MAX_CHARS),
+                runs=format_number(IMPORT_RUNS_PER_HOUR),
+            )
+        )
 
+
+    import_limit = (
+        import_block(st.session_state, announcement_text)
+        if analyze_requested and announcement_text.strip()
+        else None
+    )
 
     if analyze_requested:
 
@@ -643,7 +686,22 @@ with feed_column:
                 t("import.paste_first")
             )
 
+        elif import_limit:
+
+            limit_key, limit_values = import_limit
+            st.warning(
+                t(
+                    limit_key,
+                    **{
+                        name: format_number(value)
+                        for name, value in limit_values.items()
+                    },
+                )
+            )
+
         else:
+
+            record_run(st.session_state)
 
             with st.spinner(
                 t("import.analyzing")
@@ -682,8 +740,9 @@ with feed_column:
 
                 except Exception as error:
 
+                    log_error("AI import", error)
                     st.error(
-                        t("import.failed", error=error)
+                        t("import.failed")
                     )
 
 
@@ -1388,8 +1447,9 @@ with feed_column:
 
             if not save_result["success"]:
 
+                log_error("profile save", save_result["message"])
                 st.error(
-                    t("profile.save_failed", message=save_result["message"])
+                    t("profile.save_failed")
                 )
 
             else:
@@ -1454,7 +1514,8 @@ with feed_column:
                     try:
                         disconnect_telegram(user_client(), current_user_id())
                     except Exception as error:
-                        st.error(t("telegram.error", message=error))
+                        log_error("Telegram", error)
+                        st.error(t("telegram.error"))
                     else:
                         if st.session_state.cloud_profile:
                             st.session_state.cloud_profile["notify_telegram"] = False
@@ -1495,7 +1556,8 @@ with feed_column:
                     try:
                         code = create_link_code(user_client(), current_user_id())
                     except Exception as error:
-                        st.error(t("telegram.error", message=error))
+                        log_error("Telegram", error)
+                        st.error(t("telegram.error"))
                     else:
                         st.session_state.helai_telegram_code = {
                             "code": code,

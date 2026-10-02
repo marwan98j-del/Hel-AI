@@ -25,3 +25,6 @@ borderColor = "#1F232B"
 [client]
 # Hide Deploy and the developer menu from users.
 toolbarMode = "minimal"
+# Never show tracebacks or exception text to visitors; details stay in the
+# server log.
+showErrorDetails = "none"
