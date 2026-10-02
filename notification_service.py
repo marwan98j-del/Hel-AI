@@ -91,6 +91,38 @@ def load_opportunity(opportunity_id):
 
 
 # =========================================================
+# LOAD CANDIDATE OPPORTUNITIES (one query for the whole run)
+# =========================================================
+
+def load_opportunities_by_id(opportunity_ids):
+
+    if not opportunity_ids:
+        return {}
+
+    response = (
+        collector_supabase
+        .table("opportunities")
+        .select(
+            "id,"
+            "title,"
+            "organization,"
+            "type,"
+            "location,"
+            "deadline,"
+            "status,"
+            "source_url"
+        )
+        .in_("id", list(opportunity_ids))
+        .execute()
+    )
+
+    return {
+        opportunity["id"]: opportunity
+        for opportunity in (response.data or [])
+    }
+
+
+# =========================================================
 # OPEN CHECK
 # =========================================================
 
@@ -112,6 +144,35 @@ def not_open_reason(opportunity):
         return f"Opportunity is closed (deadline {deadline} passed)."
 
     return f"Opportunity is not open (status: {status})."
+
+
+def split_expired(candidates):
+    """(matches whose opportunity is still open, [(match, reason)] for closed ones).
+
+    Matching stops re-scoring an opportunity once it closes, so its older
+    eligible matches stay unnotified; they are reported apart instead of
+    being counted as strong new matches. A missing opportunity stays in the
+    first list so create_notification reports it as before.
+    """
+
+    opportunities = load_opportunities_by_id(
+        {match["opportunity_id"] for match in candidates}
+    )
+
+    current = []
+    expired = []
+
+    for match in candidates:
+
+        opportunity = opportunities.get(match["opportunity_id"])
+        reason = not_open_reason(opportunity) if opportunity else None
+
+        if reason:
+            expired.append((match, reason))
+        else:
+            current.append(match)
+
+    return current, expired
 
 
 # =========================================================
@@ -297,7 +358,7 @@ def build_notification_queue():
     print("====================================")
     print()
 
-    candidates = (
+    candidates, expired = split_expired(
         load_notification_candidates()
     )
 
@@ -305,6 +366,16 @@ def build_notification_queue():
         "Strong unnotified matches:",
         len(candidates)
     )
+
+    if expired:
+
+        print(
+            "Not counted, opportunity closed:",
+            len(expired)
+        )
+
+        for _match_record, reason in expired:
+            print("  -", reason)
 
     print()
 
@@ -373,6 +444,7 @@ def build_notification_queue():
 
     return {
         "strong_new_matches": len(candidates),
+        "expired": len(expired),
         "queued": created_count,
         "skipped": skipped_count,
     }
