@@ -64,6 +64,32 @@ def record_kind_is_non_actionable(value):
     }
 
 
+NON_ACTIONABLE_TITLE_PATTERNS = [
+    # "69 Master's and PhD Scholarships ..." but not "2027 Fellowships ..."
+    r"^(?!(?:19|20)\d{2}\b)\d+\+?\s+.*\b(?:scholarships|opportunities|fellowships)\b",
+    r"^how to\b",
+    r"\byou can apply (?:for )?now\b",
+]
+
+
+def title_looks_non_actionable(title):
+    lowered = clean_text(title).lower()
+    return any(
+        re.search(pattern, lowered)
+        for pattern in NON_ACTIONABLE_TITLE_PATTERNS
+    )
+
+
+def opportunity_is_non_actionable(opportunity):
+    """Reviewed/extracted kind wins; unknown kinds fall back to the title."""
+    record_kind = normalize_record_kind(opportunity.get("record_kind"))
+    if record_kind in {RECORD_KIND_INFORMATIONAL, RECORD_KIND_ROUNDUP}:
+        return True
+    if record_kind == RECORD_KIND_UNKNOWN:
+        return title_looks_non_actionable(opportunity.get("title"))
+    return False
+
+
 def normalize_status(value):
     value = clean_text(value)
     lowered = value.lower()
@@ -491,7 +517,7 @@ def infer_applicant_types_from_text(text):
         r"\bindividuals? and (?:organi[sz]ations?|institutions?) may apply\b",
         r"\bindividual applicants?\b",
         r"\bstudents? may apply\b",
-        r"\bfor students?\b",
+        r"\bfor students\b",
         r"\bfor individuals?\b",
         r"\bapplicants must be individuals?\b",
         r"\beligible applicants? include [^.\n]{0,160}\b(?:students?|undergraduates?|graduates?|degree holders?|individuals?)\b",

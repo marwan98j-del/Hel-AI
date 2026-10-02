@@ -747,6 +747,28 @@ def result_kpis(results: list[tuple[dict, dict]], today: object = None) -> dict:
     }
 
 
+DOCUMENT_REQUIREMENT_FLAGS = (
+    "requires_passport",
+    "requires_ielts",
+    "requires_portfolio",
+    "requires_cv",
+)
+
+NO_DOCUMENT_REQUIREMENTS = "No document requirements found"
+
+
+def has_document_requirements(opportunity: dict) -> bool:
+    return any(opportunity.get(flag) for flag in DOCUMENT_REQUIREMENT_FLAGS)
+
+
+def readiness_display(opportunity: dict, result: dict) -> tuple[str, str]:
+    """Readiness label and tone; a 100% with nothing to check is not shown."""
+    if not has_document_requirements(opportunity):
+        return NO_DOCUMENT_REQUIREMENTS, "neutral"
+    readiness = int(result.get("readiness") or 0)
+    return f"{readiness}%", "success" if readiness == 100 else "warning"
+
+
 def _detail_panel(title: str, items: list[str], empty: str) -> str:
     rendered = "".join(
         f'<div class="detail-item">{html.escape(str(item))}</div>' for item in items
@@ -816,22 +838,26 @@ def render_opportunity_card(
 
         eligibility_text = "Eligible" if eligible else ("Review" if needs_review else "Not eligible")
         eligibility_tone = "success" if eligible else ("warning" if needs_review else "danger")
-        readiness_tone = "success" if readiness == 100 else "warning"
+        readiness_text, readiness_tone = readiness_display(opportunity, result)
+        documents_tracked = has_document_requirements(opportunity)
         st.html(
             f"""
             <div class="score-strip">
                 <div class="score-item"><div class="score-label">Match</div><div class="score-value">{score}%</div></div>
                 <div class="score-item"><div class="score-label">Eligibility</div><div class="score-value {eligibility_tone}">{html.escape(eligibility_text)}</div></div>
-                <div class="score-item"><div class="score-label">Readiness</div><div class="score-value {readiness_tone}">{readiness}%</div></div>
+                <div class="score-item"><div class="score-label">Readiness</div><div class="score-value {readiness_tone}">{html.escape(readiness_text)}</div></div>
                 <div class="score-item"><div class="score-label">Deadline</div><div class="score-value">{html.escape(deadline)}</div></div>
             </div>
             """
         )
 
         st.progress(score / 100, text=f"Match relevance · {score}%")
-        st.progress(readiness / 100, text=f"Application readiness · {readiness}%")
+        if documents_tracked:
+            st.progress(readiness / 100, text=f"Application readiness · {readiness}%")
 
-        if eligible and readiness == 100:
+        if eligible and not documents_tracked:
+            st.info(f"Eligible. {NO_DOCUMENT_REQUIREMENTS}; check the source for application documents.")
+        elif eligible and readiness == 100:
             st.success("Eligible and ready to apply.")
         elif eligible:
             st.info("Eligible, with application-readiness tasks remaining.")

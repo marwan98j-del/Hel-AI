@@ -7,8 +7,16 @@ from opportunity_rules import (
     applicant_types_are_entity_only,
     get_eligible_applicant_types,
     effective_status,
-    record_kind_is_non_actionable,
+    opportunity_is_non_actionable,
 )
+
+
+# Funders whose notices are overwhelmingly for organizations. When their
+# applicant types cannot be determined, fail closed for individuals.
+FAIL_CLOSED_APPLICANT_SOURCES = {
+    "Grants.gov",
+    "NSF",
+}
 
 
 EDUCATION_LEVELS = {
@@ -178,8 +186,8 @@ def calculate_match(profile, opportunity, reference_date=None):
         today=reference_date,
     )
 
-    if record_kind_is_non_actionable(
-        opportunity.get("record_kind")
+    if opportunity_is_non_actionable(
+        opportunity
     ):
         gap = (
             "This record is informational and is not "
@@ -242,6 +250,18 @@ def calculate_match(profile, opportunity, reference_date=None):
 
         eligibility_gaps.append(
             "This opportunity is only for eligible organizations or institutions, not individual applicants"
+        )
+
+    elif (
+        profile_applicant_type == APPLICANT_INDIVIDUAL
+        and not applicant_types
+        and opportunity.get("source") in FAIL_CLOSED_APPLICANT_SOURCES
+    ):
+
+        eligible = False
+
+        eligibility_gaps.append(
+            "Applicant eligibility could not be confirmed"
         )
 
     elif applicant_types:

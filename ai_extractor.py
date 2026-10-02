@@ -64,7 +64,7 @@ Use exactly this JSON structure:
     "open_date": null,
     "deadline": "",
     "close_date": null,
-    "record_kind": "unknown",
+    "record_kind": "",
     "eligible_applicant_types": [],
     "applicant_type": "",
     "minimum_age": null,
@@ -228,7 +228,8 @@ Use "roundup" for pages aggregating multiple separate opportunities.
 Use "application_opportunity" only when the page content demonstrates a
 direct application. A title containing grant, scholarship, fellowship, or
 competition is not sufficient evidence. Use "unknown" when evidence is
-insufficient. Do not guess.
+insufficient. Do not guess. Always fill "record_kind" with one of these
+four values; never leave it empty.
 
 8. Use null for an age limit that is not stated.
 
