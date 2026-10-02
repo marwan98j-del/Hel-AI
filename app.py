@@ -22,19 +22,25 @@ from helai_i18n import (
     t_value,
 )
 from helai_ui import (
+    SUN_ICON,
+    filter_results,
     inject_global_styles,
     language_switcher,
     latin,
+    profile_completion,
     profile_group,
-    render_booster_card,
-    render_booster_intro,
+    render_alerts_card,
+    render_booster_rail,
+    render_deadlines_rail,
     render_empty_state,
-    render_kpis,
-    render_opportunity_card,
+    render_header,
+    render_hero,
     result_kpis,
     result_sort_key,
     section_header,
+    sign_in_intro_html,
     status_label,
+    ticket_html,
 )
 from auth_service import (
     sign_up_user,
@@ -52,7 +58,8 @@ st.set_page_config(
     page_title="HelAI",
     page_icon="H",
     layout="wide",
-    initial_sidebar_state="expanded"
+    # "auto": expanded on desktop, collapsed on phones.
+    initial_sidebar_state="auto"
 )
 
 
@@ -187,6 +194,32 @@ def load_cloud_profile():
     return None
 
 
+def build_match_profile(saved):
+    """Matcher input from a saved profile; None until it can be matched."""
+    date_of_birth = parse_saved_date((saved or {}).get("date_of_birth"))
+    if not saved or not saved.get("profile_complete") or not date_of_birth:
+        return None
+
+    return {
+        "full_name": str(saved.get("full_name") or "").strip(),
+        "city": saved.get("city") or "",
+        "age": calculate_age(date_of_birth),
+        "education": saved.get("education") or "Any",
+        "field_of_study": str(saved.get("field_of_study") or "").strip(),
+        "grade": float(saved.get("grade") or 0),
+        "languages": list(saved.get("languages") or []),
+        "skills": list(saved.get("skills") or []),
+        "interests": list(saved.get("interests") or []),
+        "opportunity_types": list(saved.get("opportunity_types") or []),
+        "has_passport": bool(saved.get("has_passport")),
+        "has_ielts": bool(saved.get("has_ielts")),
+        "has_portfolio": bool(saved.get("has_portfolio")),
+        "has_cv": bool(saved.get("has_cv")),
+        "work_experience_years": float(saved.get("work_experience_years") or 0),
+        "applicant_type": APPLICANT_INDIVIDUAL,
+    }
+
+
 def option_label(prefix):
     """format_func that translates a stored English option for display."""
     return lambda value: t_value(prefix, value, lang)
@@ -203,42 +236,33 @@ def esc(key, **kwargs):
 if not st.session_state.access_token:
     st.html('<div class="auth-page-marker"></div>')
 
-    auth_intro, auth_panel = st.columns([1.12, 0.88], gap="large")
+    auth_intro, auth_panel = st.columns([1.18, 0.82], gap="large")
 
     with auth_intro:
-        st.html(
-            f"""
-            <section class="auth-shell">
-                <div class="auth-wordmark">HELAI</div>
-                <div class="auth-eyebrow">{esc("common.opportunity_intelligence")}</div>
-                <h1 class="auth-title">{esc("auth.title")}</h1>
-                <div class="auth-copy">{esc("auth.copy")}</div>
-                <div class="auth-features">
-                    <span class="auth-feature">{esc("auth.feature_discovery")}</span>
-                    <span class="auth-feature">{esc("auth.feature_eligibility")}</span>
-                    <span class="auth-feature">{esc("auth.feature_matching")}</span>
-                    <span class="auth-feature">{esc("auth.feature_languages")}</span>
-                    <span class="auth-feature">{esc("auth.feature_readiness")}</span>
-                </div>
-            </section>
-            """
-        )
+        st.html(sign_in_intro_html(lang))
 
     with auth_panel:
         language_switcher("helai_lang_switch_auth")
 
         st.html(
             f"""
-            <div class="auth-panel-intro">
-                <h2 class="auth-panel-title">{esc("auth.welcome")}</h2>
-                <div class="auth-panel-copy">{esc("auth.welcome_copy")}</div>
-            </div>
+            <h2 class="auth-panel-title">{esc("auth.welcome")}</h2>
+            <div class="auth-panel-copy">{esc("auth.welcome_copy")}</div>
             """
         )
 
-        sign_in_tab, sign_up_tab = st.tabs([t("auth.tab_sign_in"), t("auth.tab_sign_up")])
+        auth_mode = st.segmented_control(
+            t("sidebar.account"),
+            ["sign_in", "sign_up"],
+            format_func=lambda mode: t("auth.tab_sign_in" if mode == "sign_in" else "auth.tab_sign_up"),
+            default="sign_in",
+            required=True,
+            key="helai_auth_mode",
+            label_visibility="collapsed",
+            width="stretch",
+        )
 
-        with sign_in_tab:
+        if auth_mode != "sign_up":
             with st.form("helai_sign_in_form_v2"):
                 login_email = st.text_input(
                     t("auth.email"),
@@ -280,7 +304,7 @@ if not st.session_state.access_token:
                     else:
                         st.error(login_result["message"])
 
-        with sign_up_tab:
+        else:
             with st.form("helai_sign_up_form_v2"):
                 signup_name = st.text_input(
                     t("auth.full_name"),
@@ -377,6 +401,54 @@ if st.session_state.cloud_profile is None:
         st.warning(t("auth.profile_load_failed"))
 
 
+saved_profile = (
+    st.session_state.cloud_profile
+    or {}
+)
+
+
+# =========================================================
+# MATCH RESULTS (in memory, from the saved profile)
+# =========================================================
+
+profile = build_match_profile(saved_profile)
+matching_opportunities = list(opportunities)
+
+if st.session_state.ai_imported_opportunity:
+
+    ai_opportunity = dict(
+        st.session_state.ai_imported_opportunity
+    )
+    ai_opportunity["source"] = "AI imported announcement"
+    ai_opportunity["is_ai_imported"] = True
+    matching_opportunities.append(ai_opportunity)
+
+results = []
+improvements = []
+
+if profile:
+
+    for opportunity in matching_opportunities:
+        results.append(
+            (
+                opportunity,
+                calculate_match(profile, opportunity),
+            )
+        )
+
+    results.sort(
+        key=result_sort_key,
+        reverse=True
+    )
+
+    improvements = analyze_improvements(
+        profile,
+        matching_opportunities
+    )
+
+kpis = result_kpis(results)
+
+
 # =========================================================
 # SIDEBAR
 # =========================================================
@@ -384,22 +456,20 @@ if st.session_state.cloud_profile is None:
 account_email = ""
 if st.session_state.auth_user:
     account_email = st.session_state.auth_user.get("email") or ""
-if not account_email and st.session_state.cloud_profile:
-    account_email = st.session_state.cloud_profile.get("email") or ""
+if not account_email and saved_profile:
+    account_email = saved_profile.get("email") or ""
 
-account_name = t("sidebar.default_user")
-profile_complete = False
-if st.session_state.cloud_profile:
-    account_name = st.session_state.cloud_profile.get("full_name") or account_name
-    profile_complete = bool(st.session_state.cloud_profile.get("profile_complete", False))
+account_name = saved_profile.get("full_name") or t("sidebar.default_user")
+completion = profile_completion(saved_profile)
 
 initials = "".join(
     part[0].upper() for part in account_name.split()[:2] if part
 ) or "HA"
 
 source_status = load_source_status()
+source_catalog = get_source_catalog()
 source_rows = []
-for source in get_source_catalog():
+for source in source_catalog:
     status = source_status.get(source["key"], {})
     label = source["source_name"]
     last_status = str(status.get("last_status", "active")).lower()
@@ -427,28 +497,29 @@ for source in get_source_catalog():
 
 with st.sidebar:
 
-    language_switcher("helai_lang_switch_sidebar")
-
     st.html(
         f"""
         <div class="sidebar-brand">
-            <div class="brand-mark">H</div>
+            {SUN_ICON}
             <div><div class="brand-name">{latin("HelAI")}</div>
             <div class="brand-subtitle">{esc("common.opportunity_intelligence")}</div></div>
         </div>
         <div class="sidebar-label">{esc("sidebar.account")}</div>
         <div class="account-card">
-            <div class="account-avatar">{html.escape(initials)}</div>
-            <div><div class="account-name" dir="auto">{html.escape(account_name)}</div>
-            <div class="account-email">{latin(account_email)}</div>
-            <div class="account-status">{esc("sidebar.profile_ready" if profile_complete else "sidebar.profile_in_progress")}</div></div>
+            <div class="account-row">
+                <div class="account-avatar">{html.escape(initials)}</div>
+                <div><div class="account-name" dir="auto">{html.escape(account_name)}</div>
+                <div class="account-email">{latin(account_email)}</div></div>
+            </div>
+            <div class="account-status">{esc("sidebar.profile_complete", pct=format_percent(completion))}</div>
+            <div class="progress-track"><div class="progress-fill" style="width: {completion}%;"></div></div>
         </div>
         <div class="sidebar-label">{esc("sidebar.workspace")}</div>
         <nav class="side-nav">
-            <a class="side-nav-row" href="#ai-import"><span class="side-nav-number">{format_number("01")}</span>{esc("nav.ai_import")}</a>
-            <a class="side-nav-row" href="#cloud-profile"><span class="side-nav-number">{format_number("02")}</span>{esc("nav.cloud_profile")}</a>
-            <a class="side-nav-row" href="#opportunity-map"><span class="side-nav-number">{format_number("03")}</span>{esc("nav.opportunity_map")}</a>
-            <a class="side-nav-row" href="#opportunity-booster"><span class="side-nav-number">{format_number("04")}</span>{esc("nav.opportunity_booster")}</a>
+            <a class="side-nav-row" href="#opportunity-map"><span class="side-nav-number">{format_number("01")}</span>{esc("nav.dashboard")}</a>
+            <a class="side-nav-row" href="#opportunity-booster"><span class="side-nav-number">{format_number("02")}</span>{esc("nav.opportunity_booster")}</a>
+            <a class="side-nav-row" href="#ai-import"><span class="side-nav-number">{format_number("03")}</span>{esc("nav.ai_import")}</a>
+            <a class="side-nav-row" href="#cloud-profile"><span class="side-nav-number">{format_number("04")}</span>{esc("nav.cloud_profile")}</a>
         </nav>
         <div class="sidebar-label">{esc("sidebar.sources")}</div>
         <div class="source-list">{"".join(source_rows)}</div>
@@ -475,53 +546,89 @@ with st.sidebar:
 
 
 # =========================================================
-# TOP BAR
+# HEADER AND HERO
 # =========================================================
 
-st.html(
-    f"""
-<div class="topbar">
+search_query = render_header(
+    account_name,
+    lang,
+    "helai_search",
+    "helai_lang_switch_header",
+)
 
-    <div>
-        HELAI
-    </div>
+if st.session_state.pop("helai_profile_saved", False):
+    st.success(t("profile.saved"))
 
-    <div>
-        {esc("topbar.tagline", year=format_number(2026))}
-    </div>
-
-</div>
-"""
+render_hero(
+    kpis,
+    kpis["open"],
+    [source["source"] for source in source_catalog],
+    lang,
 )
 
 
 # =========================================================
-# HERO
+# FEED AND RIGHT RAIL
 # =========================================================
 
-st.html(
-    f"""
-    <section class="product-hero">
-        <div class="section-eyebrow">{esc("hero.eyebrow")}</div>
-        <h1 class="hero-title">{esc("hero.title_line1")}<br><span class="gradient-word">{esc("hero.title_line2")}</span></h1>
-        <div class="hero-copy">{esc("hero.copy")}</div>
-        <div class="hero-chips">
-            <span class="hero-chip">{esc("hero.chip_multilingual")}</span>
-            <span class="hero-chip">{esc("nav.cloud_profile")}</span>
-            <span class="hero-chip">{esc("hero.chip_match")}</span>
-            <span class="hero-chip">{esc("field.eligibility")}</span>
-            <span class="hero-chip">{esc("field.readiness")}</span>
-        </div>
-    </section>
-    """
-)
+feed_column, rail_column = st.columns([2.4, 1], gap="large")
+
+with feed_column:
+
+    if not profile:
+        render_empty_state(
+            t("feed.complete_profile_title"),
+            t("feed.complete_profile_copy"),
+        )
+
+    else:
+        filter_mode = st.pills(
+            t("filter.label"),
+            ["all", "eligible", "closing", "funded"],
+            format_func=lambda mode: t(f"filter.{mode}"),
+            default="all",
+            required=True,
+            key="helai_filter",
+            label_visibility="collapsed",
+        )
+
+        visible = filter_results(
+            results,
+            filter_mode or "all",
+            search_query,
+        )
+
+        if visible:
+            st.html(
+                '<div class="feed">'
+                + "".join(
+                    ticket_html(opportunity, result, lang)
+                    for opportunity, result in visible
+                )
+                + "</div>"
+            )
+        else:
+            render_empty_state(
+                t("feed.empty_filter"),
+                t("map.empty_copy"),
+            )
+
+with rail_column:
+
+    render_booster_rail(improvements, lang)
+    render_alerts_card(
+        bool(saved_profile.get("email_notifications", True)),
+        lang,
+    )
+    render_deadlines_rail(results, lang)
+
 
 # =========================================================
 # SECTION 01 — AI IMPORT
 # =========================================================
 
 section_header(
-    format_number("01"),
+    format_number("03"),
     t("nav.ai_import"),
     t("import.title"),
     t("import.description"),
@@ -600,10 +707,6 @@ if analyze_requested:
                 )
 
 
-# =========================================================
-# DISPLAY AI EXTRACTION
-# =========================================================
-
 if st.session_state.ai_imported_opportunity:
 
     extracted = (
@@ -628,94 +731,47 @@ if st.session_state.ai_imported_opportunity:
         )
     )
 
-
     st.html(
         f"""
 <div class="card">
-
-    <div class="card-number">
-        {esc("import.card_number")}
-    </div>
-
-    <div class="card-title" dir="auto">
-        {title_safe}
-    </div>
-
-    <div class="card-org" dir="auto">
-        {org_safe}
-    </div>
-
-    <div class="ai-tag">
-        {esc("import.card_tag")}
-    </div>
-
+    <div class="card-number">{esc("import.card_number")}</div>
+    <div class="card-title" dir="auto">{title_safe}</div>
+    <div class="card-org" dir="auto">{org_safe}</div>
+    <div class="ai-tag">{esc("import.card_tag")}</div>
 </div>
 """
     )
 
-
     a1, a2, a3, a4 = st.columns(4)
 
-
     with a1:
-
         st.metric(
             t("field.type"),
-            t_value(
-                "type",
-                extracted.get(
-                    "type",
-                    ""
-                ),
-                lang,
-            )
+            t_value("type", extracted.get("type", ""), lang),
         )
-
 
     with a2:
-
         st.metric(
             t("field.status"),
-            status_label(
-                extracted.get(
-                    "status",
-                    ""
-                ),
-                lang,
-            )
+            status_label(extracted.get("status", ""), lang),
         )
-
 
     with a3:
-
         st.metric(
             t("field.location"),
-            extracted.get(
-                "location",
-                ""
-            )
+            extracted.get("location", ""),
         )
-
 
     with a4:
-
         st.metric(
             t("field.deadline"),
-            format_date(
-                extracted.get(
-                    "deadline",
-                    ""
-                ),
-                lang,
-            )
+            format_date(extracted.get("deadline", ""), lang),
         )
-
 
     ex1, ex2 = st.columns(
         2,
         gap="large"
     )
-
 
     with ex1:
 
@@ -725,14 +781,7 @@ if st.session_state.ai_imported_opportunity:
 
         st.write(
             f"**{t('field.education')}:**",
-            t_value(
-                "education",
-                extracted.get(
-                    "education",
-                    "Any"
-                ),
-                lang,
-            )
+            t_value("education", extracted.get("education", "Any"), lang),
         )
 
         education_rule = extracted.get(
@@ -823,7 +872,6 @@ if st.session_state.ai_imported_opportunity:
                 t("import.years", years=format_number(required_work))
             )
 
-
     with ex2:
 
         st.markdown(
@@ -834,10 +882,7 @@ if st.session_state.ai_imported_opportunity:
             f"**{t('field.languages')}:**",
             ", ".join(
                 t_value("language", value, lang)
-                for value in extracted.get(
-                    "languages",
-                    []
-                )
+                for value in extracted.get("languages", [])
             ) or t("common.none_specified")
         )
 
@@ -845,10 +890,7 @@ if st.session_state.ai_imported_opportunity:
             f"**{t('field.interests')}:**",
             ", ".join(
                 t_value("interest", value, lang)
-                for value in extracted.get(
-                    "interests",
-                    []
-                )
+                for value in extracted.get("interests", [])
             ) or t("common.none_specified")
         )
 
@@ -856,46 +898,20 @@ if st.session_state.ai_imported_opportunity:
             f"**{t('field.skills')}:**",
             ", ".join(
                 t_value("skill", value, lang)
-                for value in extracted.get(
-                    "skills",
-                    []
-                )
+                for value in extracted.get("skills", [])
             ) or t("common.none_specified")
         )
 
-        required_docs = []
-
-        if extracted.get(
-            "requires_passport",
-            False
-        ):
-            required_docs.append(
-                t("doc.passport")
+        required_docs = [
+            t(label)
+            for flag, label in (
+                ("requires_passport", "doc.passport"),
+                ("requires_ielts", "doc.ielts"),
+                ("requires_portfolio", "doc.portfolio"),
+                ("requires_cv", "doc.cv"),
             )
-
-        if extracted.get(
-            "requires_ielts",
-            False
-        ):
-            required_docs.append(
-                t("doc.ielts")
-            )
-
-        if extracted.get(
-            "requires_portfolio",
-            False
-        ):
-            required_docs.append(
-                t("doc.portfolio")
-            )
-
-        if extracted.get(
-            "requires_cv",
-            False
-        ):
-            required_docs.append(
-                t("doc.cv")
-            )
+            if extracted.get(flag, False)
+        ]
 
         st.write(
             f"**{t('import.required_documents')}:**",
@@ -906,7 +922,6 @@ if st.session_state.ai_imported_opportunity:
             )
         )
 
-
     with st.expander(
         t("import.raw_data")
     ):
@@ -916,25 +931,16 @@ if st.session_state.ai_imported_opportunity:
         )
 
 
-    st.markdown("---")
-
-
-
 # =========================================================
 # SECTION 02 — PROFILE
 # =========================================================
 
 section_header(
-    format_number("02"),
+    format_number("04"),
     t("nav.cloud_profile"),
     t("profile.title"),
     t("profile.description"),
     "cloud-profile",
-)
-
-saved_profile = (
-    st.session_state.cloud_profile
-    or {}
 )
 
 
@@ -1051,7 +1057,6 @@ with st.form(
         gap="large"
     )
 
-
     with left:
 
         profile_group(
@@ -1166,7 +1171,6 @@ with st.form(
             ),
             step=0.5,
         )
-
 
     with right:
 
@@ -1299,7 +1303,6 @@ with st.form(
             ),
         )
 
-
     submitted = st.form_submit_button(
         t("profile.save_button"),
         use_container_width=True,
@@ -1307,14 +1310,10 @@ with st.form(
 
 
 # =========================================================
-# SAVE PROFILE + PREPARE MATCHING
+# SAVE PROFILE
+# The dashboard above re-matches from the saved profile on
+# the rerun that follows a successful save.
 # =========================================================
-
-run_matching = False
-profile = None
-matching_opportunities = []
-results = []
-
 
 if submitted:
 
@@ -1359,7 +1358,6 @@ if submitted:
             "profile_complete": True,
         }
 
-
         with st.spinner(
             t("profile.saving")
         ):
@@ -1369,7 +1367,6 @@ if submitted:
                 refresh_token=st.session_state.refresh_token,
                 profile_data=cloud_profile_data,
             )
-
 
         if not save_result["success"]:
 
@@ -1397,180 +1394,8 @@ if submitted:
                         refreshed_profile["profile"]
                     )
 
-
-            st.success(
-                t("profile.saved")
-            )
-
-
-            profile = {
-                "full_name": full_name.strip(),
-                "city": city,
-                "age": calculate_age(
-                    date_of_birth
-                ),
-                "education": education,
-                "field_of_study": field_of_study.strip(),
-                "grade": float(grade),
-                "languages": languages,
-                "skills": skills,
-                "interests": interests,
-                "opportunity_types": opportunity_types,
-                "has_passport": has_passport,
-                "has_ielts": has_ielts,
-                "has_portfolio": has_portfolio,
-                "has_cv": has_cv,
-                "work_experience_years": float(
-                    work_experience_years
-                ),
-                "applicant_type": APPLICANT_INDIVIDUAL,
-            }
-
-
-            matching_opportunities = list(
-                opportunities
-            )
-
-
-            if st.session_state.ai_imported_opportunity:
-
-                ai_opportunity = dict(
-                    st.session_state.ai_imported_opportunity
-                )
-
-                ai_opportunity[
-                    "source"
-                ] = "AI imported announcement"
-
-                ai_opportunity[
-                    "is_ai_imported"
-                ] = True
-
-                matching_opportunities.append(
-                    ai_opportunity
-                )
-
-
-            for opportunity in matching_opportunities:
-
-                result = calculate_match(
-                    profile,
-                    opportunity
-                )
-
-                results.append(
-                    (
-                        opportunity,
-                        result
-                    )
-                )
-
-
-            results.sort(
-                key=result_sort_key,
-                reverse=True
-            )
-
-
-            run_matching = True
-
-
-if run_matching:
-
-# =====================================================
-    # SECTION 03
-    # =====================================================
-
-    st.markdown("---")
-
-    section_header(
-        format_number("03"),
-        t("nav.opportunity_map"),
-        t("map.title"),
-        t("map.description"),
-        "opportunity-map",
-    )
-
-
-    kpis = result_kpis(results)
-
-    render_kpis(
-        [
-            (t("kpi.open"), format_number(kpis["open"]), t("kpi.open_support"), "info"),
-            (t("kpi.eligible"), format_number(kpis["eligible"]), t("kpi.eligible_support"), "success"),
-            (t("kpi.ready"), format_number(kpis["ready"]), t("kpi.ready_support"), "violet"),
-            (t("kpi.best"), format_percent(kpis["best_score"]), t("kpi.best_support"), "accent"),
-        ]
-    )
-
-    if not results:
-        render_empty_state(
-            t("map.empty_title"),
-            t("map.empty_copy"),
-        )
-
-
-    st.markdown("---")
-
-
-    # =====================================================
-    # RESULT CARDS
-    # =====================================================
-
-    for index, (
-        opportunity,
-        result
-    ) in enumerate(
-        results,
-        start=1
-    ):
-
-        render_opportunity_card(
-            opportunity,
-            result,
-            index,
-            lang,
-        )
-
-
-    # =====================================================
-    # SECTION 04 — BOOSTER
-    # =====================================================
-
-    section_header(
-        format_number("04"),
-        t("nav.opportunity_booster"),
-        t("booster.title"),
-        t("booster.description"),
-        "opportunity-booster",
-    )
-
-    improvements = analyze_improvements(
-        profile,
-        matching_opportunities
-    )
-
-    render_booster_intro(lang)
-
-
-    if improvements:
-
-        for rank, (
-            label,
-            data
-        ) in enumerate(
-            improvements[:5],
-            start=1
-        ):
-
-            render_booster_card(label, data, rank, lang)
-
-
-    else:
-
-        st.success(
-            t("booster.all_covered")
-        )
+            st.session_state.helai_profile_saved = True
+            st.rerun()
 
 
 # =========================================================
@@ -1580,15 +1405,8 @@ if run_matching:
 st.html(
     f"""
 <div class="footer">
-
-    <div>
-        {esc("footer.prototype")}
-    </div>
-
-    <div>
-        {esc("footer.event", year=format_number(2026))}
-    </div>
-
+    <div>{esc("footer.prototype")}</div>
+    <div>{esc("footer.event", year=format_number(2026))}</div>
 </div>
 """
 )

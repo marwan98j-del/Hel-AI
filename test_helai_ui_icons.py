@@ -3,7 +3,7 @@ import re
 import unittest
 from pathlib import Path
 
-from helai_ui import GLOBAL_CSS
+from helai_ui import GLOBAL_CSS, build_global_css
 
 
 APP_SOURCE = Path(__file__).with_name("app.py").read_text(encoding="utf-8")
@@ -43,14 +43,14 @@ class HelAIIconTypographyTests(unittest.TestCase):
             self.assertNotIn('[class*="css-"]', selector)
             self.assertNotRegex(selector, r"(^|,)\s*(\*|span)\s*(,|$)")
 
-    def test_inter_font_is_scoped_with_zero_specificity(self):
-        inter_rules = [
+    def test_base_font_is_scoped_with_zero_specificity(self):
+        base_font_rules = [
             selector
             for selector, body in css_rules(GLOBAL_CSS)
-            if "font-family: Inter" in body
+            if "font-family: Geist" in body
         ]
-        self.assertTrue(inter_rules)
-        for selector in inter_rules:
+        self.assertTrue(base_font_rules)
+        for selector in base_font_rules:
             self.assertTrue(selector.startswith(":where("), selector)
             self.assertIn(".stApp", selector)
 
@@ -67,8 +67,10 @@ class HelAIIconTypographyTests(unittest.TestCase):
 
     def test_icon_guard_comes_after_rtl_typography(self):
         guard = GLOBAL_CSS.index('[data-testid="stIconMaterial"]')
-        self.assertGreater(guard, GLOBAL_CSS.index('.summary-panel[dir="rtl"]'))
-        self.assertGreater(guard, GLOBAL_CSS.index("font-family: Inter"))
+        rtl_css = build_global_css("ckb")
+        rtl_guard = rtl_css.index('[data-testid="stIconMaterial"]')
+        self.assertGreater(rtl_guard, rtl_css.index("font-family: Vazirmatn"))
+        self.assertGreater(guard, GLOBAL_CSS.index("font-family: Geist"))
 
     def test_reduced_motion_and_focus_states_kept(self):
         self.assertIn("prefers-reduced-motion: reduce", GLOBAL_CSS)
@@ -84,7 +86,8 @@ class HelAIPrimaryButtonTests(unittest.TestCase):
         )
         self.assertIn(selector, rules)
         self.assertIn("color: inherit !important", rules[selector])
-        self.assertIn("color: white !important", rules[
+        # Saffron buttons carry dark text (#16130B) for contrast.
+        self.assertIn("color: #16130B !important", rules[
             '.stButton > button[kind="primary"], .stFormSubmitButton > button'
         ])
 
@@ -114,7 +117,6 @@ class HelAISignOutTests(unittest.TestCase):
     def test_sidebar_sections_render_in_order(self):
         sidebar_source = ast.unparse(sidebar_block())
         markers = (
-            "language_switcher(",
             "sidebar-brand",
             "sidebar.account",
             "sidebar.workspace",
