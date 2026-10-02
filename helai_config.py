@@ -93,6 +93,11 @@ EMAIL_TEST_RECIPIENT = get_str(
     "",
 )
 
+HELAI_APP_URL = get_str(
+    "HELAI_APP_URL",
+    "http://localhost:8501",
+).rstrip("/")
+
 EMAIL_FROM = get_str(
     "EMAIL_FROM",
     "HelAI <onboarding@resend.dev>",

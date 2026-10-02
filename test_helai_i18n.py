@@ -68,6 +68,20 @@ class TranslationTableTests(unittest.TestCase):
         sorani = " ".join(i18n.CKB.values())
         self.assertNotIn("زێدە بکە", sorani)
         self.assertIn("زیاد بکە", sorani)
+        # "Opportunity" is هەل everywhere (website and emails), never دەرفەت.
+        self.assertNotIn("دەرفەت", sorani)
+        self.assertIn("هەل", i18n.CKB["card.opportunity"])
+
+    def test_scholarship_is_skolarship_in_sorani(self):
+        # "Scholarship" is سکۆڵەرشیپ everywhere (website and emails): no
+        # بورسی/بۆرسی/بورسە/بۆرسە or other بورس/بۆرس forms, and no plain-ل spelling.
+        old_spellings = re.compile(r"ب[وۆ]رس|سک[وۆ]لەرشیپ")
+        for key, value in i18n.CKB.items():
+            with self.subTest(key=key):
+                self.assertNotRegex(value, old_spellings)
+        self.assertEqual(i18n.CKB["type.Scholarships"], "سکۆڵەرشیپ")
+        self.assertEqual(i18n.CKB["skill.Data Analysis"], "شیکاریی داتا")  # unrelated text untouched
+        self.assertEqual(i18n.CKB["type.Fellowships"], "فێلۆشیپ")
         # Readiness and the high-school level must not share a word.
         self.assertNotEqual(i18n.CKB["field.readiness"], i18n.CKB["education.High School"])
 

@@ -339,6 +339,140 @@ EN = {
     "type.Fellowships": "Fellowships",
     "type.Volunteering": "Volunteering",
     "type.Exchange Programs": "Exchange Programs",
+    # Location words (whole stored values only; anything else stays as stored)
+    "location.International": "International",
+    "location.United Kingdom": "United Kingdom",
+    "location.United States": "United States",
+    "location.Canada": "Canada",
+    "location.Africa": "Africa",
+    "location.Iraq": "Iraq",
+    "location.Kurdistan Region": "Kurdistan Region",
+    "location.Online": "Online",
+    "location.Virtual": "Virtual",
+    "location.Remote": "Remote",
+    "location.Worldwide": "Worldwide",
+    "location.Global": "Global",
+    "location.Various countries": "Various countries",
+    # Opportunity email
+    "email.tagline": "Your AI opportunity agent",
+    "email.preheader": "A new opportunity matches your profile.",
+    "email.subject": "{brand}: {score} match — {title}",
+    "email.greeting": "Hello {name},",
+    "email.intro": "HelAI found a new opportunity that matches your profile.",
+    "email.new_match": "New match",
+    "email.eligible": "You're eligible: you meet every mandatory requirement HelAI checked.",
+    "email.not_eligible": "Some mandatory requirements are not met yet.",
+    "email.still_missing": "Still missing",
+    "email.nothing_missing": "Nothing missing that HelAI tracks.",
+    "email.no_deadline": "No deadline stated",
+    "email.days_left": "{days} days left",
+    "email.one_day_left": "1 day left",
+    "email.closes_today": "Closes today",
+    "email.organization": "Organization",
+    "email.view": "View opportunity",
+    "email.summary_fallback": "HelAI found this opportunity relevant to your profile.",
+    "email.manage_alerts": "Manage alerts",
+    "email.unsubscribe": "Don't want these emails? Turn off email alerts in your profile:",
+    "email.unsubscribe_link": "turn off email alerts",
+    "email.footer_note": "HelAI sent this automatically after comparing the opportunity's requirements with your profile.",
+    # Dashboard redesign
+    "nav.dashboard": "Dashboard",
+    "header.greeting_morning": "Good morning, {name}",
+    "header.greeting_afternoon": "Good afternoon, {name}",
+    "header.greeting_evening": "Good evening, {name}",
+    "header.search": "Search",
+    "header.search_placeholder": "Search opportunities, organizations or sources",
+    "hero.headline_zero": "No opportunities match you yet.",
+    "hero.headline_one": "{count} matches you right now.",
+    "hero.headline_two": "{count} match you right now.",
+    "hero.headline_many": "{count} match you right now.",
+    "hero.count_one": "One opportunity",
+    "hero.count_two": "Two opportunities",
+    "hero.count_few": "{n} opportunities",
+    "hero.count_many": "{n} opportunities",
+    "hero.subline": "{total} open opportunities checked from {sources}.",
+    "number.3": "Three",
+    "number.4": "Four",
+    "number.5": "Five",
+    "number.6": "Six",
+    "number.7": "Seven",
+    "number.8": "Eight",
+    "number.9": "Nine",
+    "number.10": "Ten",
+    "filter.label": "Filter",
+    "filter.all": "All",
+    "filter.eligible": "Eligible",
+    "filter.closing": "Closing soon",
+    "filter.funded": "Fully funded",
+    "feed.empty_filter": "Nothing matches this filter yet.",
+    "feed.complete_profile_title": "Complete your profile to see matches",
+    "feed.complete_profile_copy": "HelAI needs your date of birth, education and interests to check eligibility.",
+    "card.still_missing": "Still missing",
+    "card.notify_next": "Notify me next round",
+    "card.coming_soon": "Coming soon",
+    "rail.booster_effect": "{unlocked} unlocked · {improved} improved",
+    "rail.alerts_title": "Email alerts",
+    "rail.alerts_on": "On",
+    "rail.alerts_off": "Off",
+    "rail.alerts_copy_on": "We email you when an eligible match reaches your alert threshold.",
+    "rail.alerts_copy_off": "Email alerts are off. Turn them on in your profile.",
+    "rail.deadlines_title": "Upcoming deadlines",
+    "rail.days_unit": "days",
+    "rail.deadlines_empty": "No upcoming deadlines.",
+    "sidebar.profile_complete": "Profile {pct} complete",
+    "signin.headline_1": "Every opportunity you qualify for.",
+    "signin.headline_2": "Before the deadline.",
+    "signin.subline": "HelAI finds global opportunities, checks every requirement against your profile and tells you in time.",
+    "signin.preview": "Example",
+    "signin.example_title": "Example Scholarship 2027",
+    "signin.example_org": "Example Foundation",
+    "booster_label.Get a valid passport": "Get a valid passport",
+    "booster_label.Get an IELTS / English certificate": "Get an IELTS / English certificate",
+    "booster_label.Create a portfolio": "Create a portfolio",
+    "booster_label.Prepare a professional CV": "Prepare a professional CV",
+    "booster_label.Add English language": "Add English language",
+    "booster_label.Learn Artificial Intelligence": "Learn Artificial Intelligence",
+    "booster_label.Learn Programming": "Learn Programming",
+    "booster_label.Learn Data Analysis": "Learn Data Analysis",
+    "booster_label.Learn Project Management": "Learn Project Management",
+    "booster.reach_level": "Reach {level} level",
+    "booster.reach_average": "Reach a {pct} academic average",
+    "booster.build_years": "Build {years} years of work experience",
+    # matcher.py reasons and gaps (display-layer translation)
+    "reason.applicant_unconfirmed": "Applicant eligibility could not be confirmed",
+    "reason.applicant_checked": "Applicant type was checked",
+    "reason.location_neutral": "Location compatibility is neutral",
+    "reason.no_education_required": "No specific education level is required",
+    "reason.available_kurdistan": "The opportunity is available across the Kurdistan Region",
+    "reason.available_iraq": "The opportunity is available in Iraq",
+    "reason.international": "This is an international opportunity",
+    "reason.entity_only": "This opportunity is only for eligible organizations or institutions, not individual applicants",
+    "reason.informational": "This record is informational and is not an application opportunity",
+    "reason.age_ok": "You meet the age requirement",
+    "reason.languages_ok": "You meet the language requirements",
+    "reason.status_unknown": "This opportunity does not have a confirmed open status",
+    "reason.status_closed": "This opportunity is closed",
+    "reason.status_upcoming": "This opportunity is not open yet",
+    "reason.matching_interests": "Matching interests: {items}",
+    "reason.matching_skills": "Matching skills: {items}",
+    "reason.missing_language": "Missing required language: {items}",
+    "reason.must_live_in": "Applicants must live in {place}",
+    "reason.max_age": "Maximum age is {n}",
+    "reason.min_age": "Minimum age is {n}",
+    "reason.missing_document": "Missing document: {doc}",
+    "reason.min_average": "Requires a minimum academic average of {pct}",
+    "reason.requires_education": "Requires at least {level}",
+    "reason.requires_years": "Requires {n} years of work experience",
+    "reason.located_in": "The opportunity is located in {place}",
+    "reason.outside_city": "The opportunity is outside your selected city ({place})",
+    "reason.targets_level": "This opportunity specifically targets {level} applicants",
+    "reason.has_document": "You already have the required {doc}",
+    "reason.looking_for": "You are looking for {type} opportunities",
+    "reason.meets_years": "You meet the {n}-year work experience requirement",
+    "reason.meets_residency": "You meet the {place} residency requirement",
+    "reason.education_matches": "Your education matches the required {level} level",
+    "reason.education_meets": "Your education meets the {level} requirement",
+    "reason.grade_meets": "Your grade meets the minimum {pct} requirement",
 }
 
 
@@ -411,7 +545,7 @@ CKB = {
     "import.workspace_heading": "شوێنی دەرهێنان بە زیرەکی دەستکرد",
     "import.workspace_copy": "تەواوی ڕاگەیاندنەکە بلکێنە بۆ ئەوەی مەرج و دوا وادە بە وردترین شێوە دەربهێنرێن.",
     "import.announcement_label": "ڕاگەیاندنی هەل",
-    "import.announcement_placeholder": "ڕاگەیاندنی بورسیە، پێشبڕکێ، ڕاهێنان، ڕاهێنانی کاری، فێلۆشیپ یان بەخشینێک لێرە بلکێنە...",
+    "import.announcement_placeholder": "ڕاگەیاندنی سکۆڵەرشیپ، پێشبڕکێ، ڕاهێنان، ڕاهێنانی کاری، فێلۆشیپ یان بەخشینێک لێرە بلکێنە...",
     "import.announcement_help": "HelAI ڕاگەیاندن بە کوردی، عەرەبی، ئینگلیزی و دەقی تێکەڵ وەردەگرێت.",
     "import.analyze_button": "شیکردنەوە بە زیرەکی دەستکرد",
     "import.paste_first": "تکایە سەرەتا ڕاگەیاندنی هەلێک بلکێنە.",
@@ -607,7 +741,7 @@ CKB = {
     "interest.Health": "تەندروستی",
     "interest.Culture": "کولتوور",
     "interest.International Programs": "پرۆگرامە نێودەوڵەتییەکان",
-    "type.Scholarships": "بورسیە",
+    "type.Scholarships": "سکۆڵەرشیپ",
     "type.Internships": "ڕاهێنانی کاری",
     "type.Competitions": "پێشبڕکێ",
     "type.Training Programs": "پرۆگرامی ڕاهێنان",
@@ -615,6 +749,136 @@ CKB = {
     "type.Fellowships": "فێلۆشیپ",
     "type.Volunteering": "خۆبەخشی",
     "type.Exchange Programs": "پرۆگرامی ئاڵوگۆڕ",
+    "location.International": "نێودەوڵەتی",
+    "location.United Kingdom": "بەریتانیا",
+    "location.United States": "ئەمریکا",
+    "location.Canada": "کەنەدا",
+    "location.Africa": "ئەفریقا",
+    "location.Iraq": "عێراق",
+    "location.Kurdistan Region": "هەرێمی کوردستان",
+    "location.Online": "ئۆنلاین",
+    "location.Virtual": "ئۆنلاین",
+    "location.Remote": "لە دوورەوە",
+    "location.Worldwide": "هەموو جیهان",
+    "location.Global": "جیهانی",
+    "location.Various countries": "چەند وڵاتێک",
+    "email.tagline": "یاریدەدەری زیرەکی دەستکردی تۆ بۆ هەلەکان",
+    "email.preheader": "هەلێکی نوێ لەگەڵ پرۆفایلەکەت دەگونجێت.",
+    "email.subject": "{brand}: هەلێک بە گونجانی {score} بۆ تۆ — {title}",
+    "email.greeting": "سڵاو {name}،",
+    "email.intro": "HelAI هەلێکی نوێی دۆزیوەتەوە کە لەگەڵ پرۆفایلەکەت دەگونجێت.",
+    "email.new_match": "گونجانی نوێ",
+    "email.eligible": "شایستەیت: هەموو ئەو مەرجە ناچارییانەی HelAI پشکنیونی جێبەجێ دەکەیت.",
+    "email.not_eligible": "هەندێک مەرجی ناچاری هێشتا جێبەجێ نەبوون.",
+    "email.still_missing": "هێشتا کەمە",
+    "email.nothing_missing": "هیچ شتێکی بەدواداچووکراو کەم نییە.",
+    "email.no_deadline": "هیچ دوا وادەیەک دیاری نەکراوە",
+    "email.days_left": "{days} ڕۆژ ماوە",
+    "email.one_day_left": "تەنها یەک ڕۆژ ماوە",
+    "email.closes_today": "ئەمڕۆ دوا ڕۆژە",
+    "email.organization": "ڕێکخراو",
+    "email.view": "بینینی هەلەکە",
+    "email.summary_fallback": "HelAI ئەم هەلەی بە گونجاو بۆ پرۆفایلەکەت زانیوە.",
+    "email.manage_alerts": "بەڕێوەبردنی ئاگادارکردنەوەکان",
+    "email.unsubscribe": "ئەم ئیمەیڵانەت ناوێت؟ ئاگادارکردنەوەی ئیمەیڵ لە پرۆفایلەکەتدا بکوژێنەوە:",
+    "email.unsubscribe_link": "کوژاندنەوەی ئاگادارکردنەوەی ئیمەیڵ",
+    "email.footer_note": "HelAI ئەم ئیمەیڵەی بە شێوەی ئۆتۆماتیکی ناردووە، دوای بەراوردکردنی مەرجەکانی هەلەکە لەگەڵ پرۆفایلەکەت.",
+    "nav.dashboard": "پەڕەی سەرەکی",
+    "header.greeting_morning": "بەیانیت باش، {name}",
+    "header.greeting_afternoon": "دوای نیوەڕۆت باش، {name}",
+    "header.greeting_evening": "ئێوارەت باش، {name}",
+    "header.search": "گەڕان",
+    "header.search_placeholder": "گەڕان بە دوای هەل، ڕێکخراو یان سەرچاوە",
+    "hero.headline_zero": "هێشتا هیچ هەلێک لەگەڵ تۆدا ناگونجێت.",
+    "hero.headline_one": "{count} ئێستا لەگەڵ تۆدا دەگونجێت.",
+    "hero.headline_two": "{count} ئێستا لەگەڵ تۆدا دەگونجێن.",
+    "hero.headline_many": "{count} ئێستا لەگەڵ تۆدا دەگونجێن.",
+    "hero.count_one": "یەک هەل",
+    "hero.count_two": "دوو هەل",
+    "hero.count_few": "{n} هەل",
+    "hero.count_many": "{n} هەل",
+    "hero.subline": "{total} هەلی کراوە لە {sources} پشکنران.",
+    "number.3": "سێ",
+    "number.4": "چوار",
+    "number.5": "پێنج",
+    "number.6": "شەش",
+    "number.7": "حەوت",
+    "number.8": "هەشت",
+    "number.9": "نۆ",
+    "number.10": "دە",
+    "filter.label": "پاڵاوتن",
+    "filter.all": "هەموو",
+    "filter.eligible": "شایستە",
+    "filter.closing": "نزیکە لە داخستن",
+    "filter.funded": "تەواو پارەدراو",
+    "feed.empty_filter": "هێشتا هیچ هەلێک لەگەڵ ئەم پاڵاوتنە ناگونجێت.",
+    "feed.complete_profile_title": "پرۆفایلەکەت تەواو بکە بۆ بینینی هەلە گونجاوەکان",
+    "feed.complete_profile_copy": "HelAI پێویستی بە ڕێکەوتی لەدایکبوون، خوێندن و بوارە دڵخوازەکانتە بۆ پشکنینی شایستەبوون.",
+    "card.still_missing": "هێشتا کەمە",
+    "card.notify_next": "بۆ خولی داهاتوو ئاگادارم بکەوە",
+    "card.coming_soon": "بەم زووانە",
+    "rail.booster_effect": "{unlocked} کرایەوە · {improved} باشتر بوو",
+    "rail.alerts_title": "ئاگادارکردنەوەی ئیمەیڵ",
+    "rail.alerts_on": "چالاک",
+    "rail.alerts_off": "ناچالاک",
+    "rail.alerts_copy_on": "کاتێک هەلێکی شایستە دەگاتە سنووری ئاگادارکردنەوە، ئیمەیڵت بۆ دەنێرین.",
+    "rail.alerts_copy_off": "ئاگادارکردنەوەی ئیمەیڵ کوژاوەتەوە. لە پرۆفایلەکەتدا چالاکی بکە.",
+    "rail.deadlines_title": "دوا وادە نزیکەکان",
+    "rail.days_unit": "ڕۆژ",
+    "rail.deadlines_empty": "هیچ دوا وادەیەکی نزیک نییە.",
+    "sidebar.profile_complete": "پرۆفایل {pct} تەواوە",
+    "signin.headline_1": "هەموو ئەو هەلانەی شایستەیانیت.",
+    "signin.headline_2": "پێش تەواوبوونی وادە.",
+    "signin.subline": "HelAI هەلە جیهانییەکان دەدۆزێتەوە، هەموو مەرجێک لەگەڵ پرۆفایلەکەت بەراورد دەکات و لە کاتی خۆیدا ئاگادارت دەکاتەوە.",
+    "signin.preview": "نموونە",
+    "signin.example_title": "سکۆڵەرشیپی نموونە ٢٠٢٧",
+    "signin.example_org": "دامەزراوەی نموونە",
+    "booster_label.Get a valid passport": "پاسپۆرتێکی کارپێکراو وەربگرە",
+    "booster_label.Get an IELTS / English certificate": "بڕوانامەی IELTS یان زمانی ئینگلیزی وەربگرە",
+    "booster_label.Create a portfolio": "پۆرتفۆلیۆیەک دروست بکە",
+    "booster_label.Prepare a professional CV": "ژیاننامەیەکی (CV) پیشەیی ئامادە بکە",
+    "booster_label.Add English language": "زمانی ئینگلیزی زیاد بکە",
+    "booster_label.Learn Artificial Intelligence": "فێری زیرەکی دەستکرد ببە",
+    "booster_label.Learn Programming": "فێری پرۆگرامسازی ببە",
+    "booster_label.Learn Data Analysis": "فێری شیکاریی داتا ببە",
+    "booster_label.Learn Project Management": "فێری بەڕێوەبردنی پرۆژە ببە",
+    "booster.reach_level": "بگە بە ئاستی {level}",
+    "booster.reach_average": "تێکڕای {pct} بەدەست بهێنە",
+    "booster.build_years": "{years} ساڵ ئەزموونی کار کۆبکەرەوە",
+    "reason.applicant_unconfirmed": "شایستەبوونی پێشکەشکار پشتڕاست نەکرایەوە",
+    "reason.applicant_checked": "جۆری پێشکەشکار پشکنرا",
+    "reason.location_neutral": "گونجانی شوێن بێلایەنە",
+    "reason.no_education_required": "هیچ ئاستێکی دیاریکراوی خوێندن پێویست نییە",
+    "reason.available_kurdistan": "ئەم هەلە لە سەرانسەری هەرێمی کوردستان بەردەستە",
+    "reason.available_iraq": "ئەم هەلە لە عێراق بەردەستە",
+    "reason.international": "ئەمە هەلێکی نێودەوڵەتییە",
+    "reason.entity_only": "ئەم هەلە تەنها بۆ ڕێکخراو و دامەزراوە شایستەکانە، نەک بۆ تاکەکەس",
+    "reason.informational": "ئەم تۆمارە زانیارییە و هەلی پێشکەشکردن نییە",
+    "reason.age_ok": "مەرجی تەمەن جێبەجێ دەکەیت",
+    "reason.languages_ok": "مەرجەکانی زمان جێبەجێ دەکەیت",
+    "reason.status_unknown": "کراوەبوونی ئەم هەلە پشتڕاست نەکراوەتەوە",
+    "reason.status_closed": "ئەم هەلە داخراوە",
+    "reason.status_upcoming": "ئەم هەلە هێشتا نەکراوەتەوە",
+    "reason.matching_interests": "بوارە دڵخوازە هاوبەشەکان: {items}",
+    "reason.matching_skills": "توانا هاوبەشەکان: {items}",
+    "reason.missing_language": "زمانی پێویست کەمە: {items}",
+    "reason.must_live_in": "پێشکەشکاران دەبێت لە {place} نیشتەجێ بن",
+    "reason.max_age": "زۆرترین تەمەن {n} ساڵە",
+    "reason.min_age": "کەمترین تەمەن {n} ساڵە",
+    "reason.missing_document": "بەڵگەنامەی کەم: {doc}",
+    "reason.min_average": "پێویستی بە تێکڕای ئەکادیمیی لانیکەم {pct} هەیە",
+    "reason.requires_education": "لانیکەم {level} پێویستە",
+    "reason.requires_years": "{n} ساڵ ئەزموونی کار پێویستە",
+    "reason.located_in": "ئەم هەلە لە {place} دەبێت",
+    "reason.outside_city": "ئەم هەلە لە دەرەوەی شارە هەڵبژێردراوەکەتە ({place})",
+    "reason.targets_level": "ئەم هەلە تایبەتە بە پێشکەشکارانی ئاستی {level}",
+    "reason.has_document": "بەڵگەنامەی پێویستت هەیە: {doc}",
+    "reason.looking_for": "تۆ بە دوای هەلی {type}دا دەگەڕێیت",
+    "reason.meets_years": "مەرجی {n} ساڵ ئەزموونی کار جێبەجێ دەکەیت",
+    "reason.meets_residency": "مەرجی نیشتەجێبوون لە {place} جێبەجێ دەکەیت",
+    "reason.education_matches": "خوێندنەکەت لەگەڵ ئاستی پێویستی {level} دەگونجێت",
+    "reason.education_meets": "خوێندنەکەت مەرجی {level} جێبەجێ دەکات",
+    "reason.grade_meets": "نمرەکەت مەرجی کەمترین {pct} جێبەجێ دەکات",
 }
 
 
@@ -891,6 +1155,136 @@ AR = {
     "type.Fellowships": "زمالات",
     "type.Volunteering": "تطوع",
     "type.Exchange Programs": "برامج تبادل",
+    "location.International": "دولي",
+    "location.United Kingdom": "المملكة المتحدة",
+    "location.United States": "الولايات المتحدة",
+    "location.Canada": "كندا",
+    "location.Africa": "أفريقيا",
+    "location.Iraq": "العراق",
+    "location.Kurdistan Region": "إقليم كردستان",
+    "location.Online": "عبر الإنترنت",
+    "location.Virtual": "عبر الإنترنت",
+    "location.Remote": "عن بُعد",
+    "location.Worldwide": "جميع أنحاء العالم",
+    "location.Global": "عالمي",
+    "location.Various countries": "دول متعددة",
+    "email.tagline": "وكيلك الذكي للفرص",
+    "email.preheader": "فرصة جديدة تناسب ملفك الشخصي.",
+    "email.subject": "{brand}: فرصة بنسبة مطابقة {score} لك — {title}",
+    "email.greeting": "مرحبًا {name}،",
+    "email.intro": "عثر HelAI على فرصة جديدة تناسب ملفك الشخصي.",
+    "email.new_match": "مطابقة جديدة",
+    "email.eligible": "أنت مؤهّل: تستوفي جميع الشروط الإلزامية التي تحقق منها HelAI.",
+    "email.not_eligible": "لم تُستوفَ بعض الشروط الإلزامية بعد.",
+    "email.still_missing": "ما زال ناقصًا",
+    "email.nothing_missing": "لا يوجد نقص فيما يتابعه HelAI.",
+    "email.no_deadline": "لم يُذكر موعد نهائي",
+    "email.days_left": "الأيام المتبقية: {days}",
+    "email.one_day_left": "يتبقى يوم واحد",
+    "email.closes_today": "يُغلق اليوم",
+    "email.organization": "الجهة",
+    "email.view": "عرض الفرصة",
+    "email.summary_fallback": "وجد HelAI أن هذه الفرصة مناسبة لملفك الشخصي.",
+    "email.manage_alerts": "إدارة التنبيهات",
+    "email.unsubscribe": "لا تريد هذه الرسائل؟ أوقف تنبيهات البريد الإلكتروني من ملفك الشخصي:",
+    "email.unsubscribe_link": "إيقاف تنبيهات البريد",
+    "email.footer_note": "أرسل HelAI هذه الرسالة تلقائيًا بعد مقارنة متطلبات الفرصة بملفك الشخصي.",
+    "nav.dashboard": "لوحة التحكم",
+    "header.greeting_morning": "صباح الخير، {name}",
+    "header.greeting_afternoon": "مساء الخير، {name}",
+    "header.greeting_evening": "مساء الخير، {name}",
+    "header.search": "بحث",
+    "header.search_placeholder": "ابحث عن فرصة أو جهة أو مصدر",
+    "hero.headline_zero": "لا توجد فرص تناسبك بعد.",
+    "hero.headline_one": "{count} تناسبك الآن.",
+    "hero.headline_two": "{count} تناسبانك الآن.",
+    "hero.headline_many": "{count} تناسبك الآن.",
+    "hero.count_one": "فرصة واحدة",
+    "hero.count_two": "فرصتان",
+    "hero.count_few": "{n} فرص",
+    "hero.count_many": "{n} فرصة",
+    "hero.subline": "تم فحص {total} من الفرص المفتوحة في {sources}.",
+    "number.3": "ثلاث",
+    "number.4": "أربع",
+    "number.5": "خمس",
+    "number.6": "ست",
+    "number.7": "سبع",
+    "number.8": "ثماني",
+    "number.9": "تسع",
+    "number.10": "عشر",
+    "filter.label": "تصفية",
+    "filter.all": "الكل",
+    "filter.eligible": "مؤهّل",
+    "filter.closing": "تُغلق قريبًا",
+    "filter.funded": "ممولة بالكامل",
+    "feed.empty_filter": "لا شيء يطابق هذا التصنيف بعد.",
+    "feed.complete_profile_title": "أكمل ملفك الشخصي لرؤية الفرص المناسبة",
+    "feed.complete_profile_copy": "يحتاج HelAI إلى تاريخ ميلادك وتعليمك واهتماماتك للتحقق من الأهلية.",
+    "card.still_missing": "ما زال ناقصًا",
+    "card.notify_next": "نبّهني في الدورة القادمة",
+    "card.coming_soon": "قريبًا",
+    "rail.booster_effect": "أُتيحت {unlocked} · تحسّنت {improved}",
+    "rail.alerts_title": "تنبيهات البريد",
+    "rail.alerts_on": "مفعّلة",
+    "rail.alerts_off": "متوقفة",
+    "rail.alerts_copy_on": "نراسلك عندما تصل مطابقة مؤهّلة إلى حدّ التنبيه.",
+    "rail.alerts_copy_off": "تنبيهات البريد متوقفة. فعّلها من ملفك الشخصي.",
+    "rail.deadlines_title": "المواعيد النهائية القادمة",
+    "rail.days_unit": "يوم",
+    "rail.deadlines_empty": "لا توجد مواعيد نهائية قريبة.",
+    "sidebar.profile_complete": "اكتمل الملف بنسبة {pct}",
+    "signin.headline_1": "كل فرصة أنت مؤهّل لها.",
+    "signin.headline_2": "قبل الموعد النهائي.",
+    "signin.subline": "يكتشف HelAI الفرص العالمية، ويقارن كل شرط بملفك الشخصي، ويُعلمك في الوقت المناسب.",
+    "signin.preview": "مثال",
+    "signin.example_title": "منحة دراسية تجريبية ٢٠٢٧",
+    "signin.example_org": "مؤسسة تجريبية",
+    "booster_label.Get a valid passport": "احصل على جواز سفر ساري المفعول",
+    "booster_label.Get an IELTS / English certificate": "احصل على شهادة IELTS أو شهادة لغة إنجليزية",
+    "booster_label.Create a portfolio": "أنشئ ملف أعمال",
+    "booster_label.Prepare a professional CV": "جهّز سيرة ذاتية احترافية",
+    "booster_label.Add English language": "أضف اللغة الإنجليزية",
+    "booster_label.Learn Artificial Intelligence": "تعلّم الذكاء الاصطناعي",
+    "booster_label.Learn Programming": "تعلّم البرمجة",
+    "booster_label.Learn Data Analysis": "تعلّم تحليل البيانات",
+    "booster_label.Learn Project Management": "تعلّم إدارة المشاريع",
+    "booster.reach_level": "احصل على مستوى {level}",
+    "booster.reach_average": "حقّق معدلًا أكاديميًا بنسبة {pct}",
+    "booster.build_years": "اكتسب خبرة عملية لمدة {years} سنوات",
+    "reason.applicant_unconfirmed": "تعذّر التأكد من أهلية المتقدّم",
+    "reason.applicant_checked": "تم التحقق من نوع المتقدّم",
+    "reason.location_neutral": "توافق الموقع محايد",
+    "reason.no_education_required": "لا يُشترط مستوى تعليمي محدد",
+    "reason.available_kurdistan": "الفرصة متاحة في جميع أنحاء إقليم كردستان",
+    "reason.available_iraq": "الفرصة متاحة في العراق",
+    "reason.international": "هذه فرصة دولية",
+    "reason.entity_only": "هذه الفرصة مخصصة للمنظمات والمؤسسات المؤهلة فقط، وليست للأفراد",
+    "reason.informational": "هذا السجل معلوماتي وليس فرصة للتقديم",
+    "reason.age_ok": "تستوفي شرط العمر",
+    "reason.languages_ok": "تستوفي متطلبات اللغة",
+    "reason.status_unknown": "لم يتم تأكيد أن هذه الفرصة مفتوحة",
+    "reason.status_closed": "هذه الفرصة مغلقة",
+    "reason.status_upcoming": "هذه الفرصة لم تُفتح بعد",
+    "reason.matching_interests": "اهتمامات مطابقة: {items}",
+    "reason.matching_skills": "مهارات مطابقة: {items}",
+    "reason.missing_language": "لغة مطلوبة غير متوفرة: {items}",
+    "reason.must_live_in": "يجب أن يقيم المتقدّمون في {place}",
+    "reason.max_age": "الحد الأقصى للعمر {n} سنة",
+    "reason.min_age": "الحد الأدنى للعمر {n} سنة",
+    "reason.missing_document": "مستند ناقص: {doc}",
+    "reason.min_average": "يتطلب معدلًا أكاديميًا لا يقل عن {pct}",
+    "reason.requires_education": "يتطلب {level} على الأقل",
+    "reason.requires_years": "يتطلب خبرة عملية لمدة {n} سنوات",
+    "reason.located_in": "الفرصة في {place}",
+    "reason.outside_city": "الفرصة خارج مدينتك المختارة ({place})",
+    "reason.targets_level": "تستهدف هذه الفرصة المتقدّمين من مستوى {level} تحديدًا",
+    "reason.has_document": "لديك بالفعل المستند المطلوب: {doc}",
+    "reason.looking_for": "أنت تبحث عن فرص من نوع {type}",
+    "reason.meets_years": "تستوفي شرط الخبرة العملية لمدة {n} سنوات",
+    "reason.meets_residency": "تستوفي شرط الإقامة في {place}",
+    "reason.education_matches": "يتطابق تعليمك مع مستوى {level} المطلوب",
+    "reason.education_meets": "يستوفي تعليمك شرط {level}",
+    "reason.grade_meets": "يستوفي معدلك الحد الأدنى المطلوب {pct}",
 }
 
 
@@ -1011,3 +1405,156 @@ def format_date(value, lang: str | None = None) -> str:
     months = MONTHS.get(lang, MONTHS[FALLBACK_LANGUAGE])
     day = f"{parsed.day:02d}" if lang == "en" else str(parsed.day)
     return localize_digits(f"{day} {months[parsed.month - 1]} {parsed.year}", lang)
+
+
+def count_phrase(count: int, lang: str | None = None) -> tuple[str, str]:
+    """(headline template, count phrase) with each language's plural rules.
+
+    The headline template has a ``{count}`` slot for the highlighted phrase.
+    """
+    lang = normalize_language(lang) or active_language()
+    if count <= 0:
+        return t("hero.headline_zero", lang=lang), ""
+    if count == 1:
+        return t("hero.headline_one", lang=lang), t("hero.count_one", lang=lang)
+    if count == 2:
+        return t("hero.headline_two", lang=lang), t("hero.count_two", lang=lang)
+    if count <= 10:
+        number = t(f"number.{count}", lang=lang)
+        return t("hero.headline_many", lang=lang), t("hero.count_few", lang=lang, n=number)
+    return (
+        t("hero.headline_many", lang=lang),
+        t("hero.count_many", lang=lang, n=format_number(count, lang)),
+    )
+
+
+BOOSTER_PATTERNS = (
+    (r"^Reach (.+) level$", "booster.reach_level", "level"),
+    (r"^Reach a ([\d.]+)% academic average$", "booster.reach_average", "pct"),
+    (r"^Build ([\d.]+) years of work experience$", "booster.build_years", "years"),
+)
+
+
+def translate_booster_label(label, lang: str | None = None) -> str:
+    """Display-layer translation of matcher.analyze_improvements labels."""
+    import re
+
+    lang = normalize_language(lang) or active_language()
+    text = str(label or "")
+    if f"booster_label.{text}" in EN:
+        return t(f"booster_label.{text}", lang=lang)
+    for pattern, key, field in BOOSTER_PATTERNS:
+        found = re.match(pattern, text)
+        if not found:
+            continue
+        value = found.group(1)
+        if field == "level":
+            value = t_value("education", value, lang)
+        elif field == "pct":
+            value = format_percent(float(value), lang)
+        else:
+            value = format_number(float(value), lang)
+        return t(key, lang=lang, **{field: value})
+    return text
+
+
+# matcher.py reason and gap sentences (English) -> display translation.
+MATCH_FIXED = {
+    "Applicant eligibility could not be confirmed": "reason.applicant_unconfirmed",
+    "Applicant type was checked": "reason.applicant_checked",
+    "Location compatibility is neutral": "reason.location_neutral",
+    "No specific education level is required": "reason.no_education_required",
+    "The opportunity is available across the Kurdistan Region": "reason.available_kurdistan",
+    "The opportunity is available in Iraq": "reason.available_iraq",
+    "This is an international opportunity": "reason.international",
+    "This opportunity is only for eligible organizations or institutions, not individual applicants": "reason.entity_only",
+    "This record is informational and is not an application opportunity": "reason.informational",
+    "You meet the age requirement": "reason.age_ok",
+    "You meet the language requirements": "reason.languages_ok",
+    "This opportunity does not have a confirmed open status": "reason.status_unknown",
+    "This opportunity is closed": "reason.status_closed",
+    "This opportunity is not open yet": "reason.status_upcoming",
+}
+
+# Document labels used by matcher.py readiness checks.
+MATCH_DOCUMENTS = {
+    "Valid passport": "doc.passport",
+    "IELTS / English certificate": "doc.ielts",
+    "Portfolio": "doc.portfolio",
+    "CV": "doc.cv",
+}
+
+# (regex, key, {slot: kind}); kinds say how a captured value is translated.
+MATCH_PATTERNS = (
+    (r"^Matching interests: (?P<items>.+)$", "reason.matching_interests", {"items": "interest_list"}),
+    (r"^Matching skills: (?P<items>.+)$", "reason.matching_skills", {"items": "skill_list"}),
+    (r"^Missing required language: (?P<items>.+)$", "reason.missing_language", {"items": "language_list"}),
+    (r"^Applicants must live in (?:the )?(?P<place>.+)$", "reason.must_live_in", {"place": "place"}),
+    (r"^Maximum age is (?P<n>[\d.]+)$", "reason.max_age", {"n": "number"}),
+    (r"^Minimum age is (?P<n>[\d.]+)$", "reason.min_age", {"n": "number"}),
+    (r"^Missing document: (?P<doc>.+)$", "reason.missing_document", {"doc": "document"}),
+    (r"^Requires a minimum academic average of (?P<pct>[\d.]+)%$", "reason.min_average", {"pct": "percent"}),
+    (r"^Requires at least (?P<level>.+)$", "reason.requires_education", {"level": "education"}),
+    (r"^Requires (?P<n>[\d.]+) years of work experience$", "reason.requires_years", {"n": "number"}),
+    (r"^The opportunity is located in (?P<place>.+)$", "reason.located_in", {"place": "place"}),
+    (r"^The opportunity is outside your selected city \((?P<place>.+)\)$", "reason.outside_city", {"place": "place"}),
+    (r"^This opportunity specifically targets (?P<level>.+) applicants$", "reason.targets_level", {"level": "education"}),
+    (r"^You already have the required (?P<doc>.+)$", "reason.has_document", {"doc": "document"}),
+    (r"^You are looking for (?P<type>.+) opportunities$", "reason.looking_for", {"type": "type"}),
+    (r"^You meet the (?P<n>[\d.]+)-year work experience requirement$", "reason.meets_years", {"n": "number"}),
+    (r"^You meet the (?P<place>.+) residency requirement$", "reason.meets_residency", {"place": "place"}),
+    (r"^Your education matches the required (?P<level>.+) level$", "reason.education_matches", {"level": "education"}),
+    (r"^Your education meets the (?P<level>.+) requirement$", "reason.education_meets", {"level": "education"}),
+    (r"^Your grade meets the minimum (?P<pct>[\d.]+)% requirement$", "reason.grade_meets", {"pct": "percent"}),
+)
+
+
+def _match_value(kind: str, value: str, lang: str) -> str:
+    separator = "، " if lang in RTL_LANGUAGES else ", "
+    if kind.endswith("_list"):
+        prefix = kind[: -len("_list")]
+        return separator.join(
+            t_value(prefix, item.strip(), lang) for item in value.split(",") if item.strip()
+        )
+    if kind == "number":
+        return format_number(float(value), lang)
+    if kind == "percent":
+        return format_percent(float(value), lang)
+    if kind == "document":
+        key = MATCH_DOCUMENTS.get(value)
+        return t(key, lang=lang) if key else value
+    if kind == "education":
+        return t_value("education", value, lang)
+    if kind == "type":
+        return t_value("type", value, lang)
+    if kind == "place":
+        label = t_value("location", value, lang)
+        return label if label != value else t_value("city", value, lang)
+    return value
+
+
+def translate_match_message(message, lang: str | None = None) -> str:
+    """Translate a matcher.py reason or gap; unknown sentences stay as they are."""
+    import re
+
+    lang = normalize_language(lang) or active_language()
+    text = str(message or "")
+    if lang == "en":
+        return text
+    if text in MATCH_FIXED:
+        return t(MATCH_FIXED[text], lang=lang)
+    for pattern, key, slots in MATCH_PATTERNS:
+        found = re.match(pattern, text)
+        if found:
+            values = {
+                slot: _match_value(kind, found.group(slot), lang)
+                for slot, kind in slots.items()
+            }
+            return t(key, lang=lang, **values)
+    return text
+
+
+def normalize_sorani_terms(text) -> str:
+    """HelAI's Kurdish uses هەل for "opportunity". Stored AI summaries sometimes
+    say دەرفەت; the suffixed forms map directly (دەرفەتەکان -> هەلەکان)."""
+    return str(text or "").replace("دەرفەت", "هەل")

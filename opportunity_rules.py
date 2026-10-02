@@ -50,6 +50,22 @@ def clean_text(value):
     return " ".join(str(value).split()).strip()
 
 
+DOCUMENT_REQUIREMENT_FLAGS = (
+    "requires_passport",
+    "requires_ielts",
+    "requires_portfolio",
+    "requires_cv",
+)
+
+
+def has_document_requirements(opportunity):
+    """Readiness is only meaningful when at least one document is tracked."""
+    return any(
+        (opportunity or {}).get(flag)
+        for flag in DOCUMENT_REQUIREMENT_FLAGS
+    )
+
+
 def normalize_record_kind(value):
     normalized = clean_text(value).lower()
     if normalized in KNOWN_RECORD_KINDS:
