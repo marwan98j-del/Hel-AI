@@ -28,3 +28,8 @@ toolbarMode = "minimal"
 # Never show tracebacks or exception text to visitors; details stay in the
 # server log.
 showErrorDetails = "none"
+
+[server]
+# Listen on this computer only. The Cloudflare tunnel connects to
+# localhost, so other devices on the network can't bypass it.
+address = "localhost"
