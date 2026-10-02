@@ -8,24 +8,29 @@ import source_adapters
 
 
 class _NotificationQuery:
-    def __init__(self, rows):
-        self.rows = rows
+    def __init__(self, client):
+        self.client = client
 
     def select(self, _fields):
         return self
 
+    def eq(self, column, value):
+        self.client.filters.append((column, value))
+        return self
+
     def execute(self):
-        return SimpleNamespace(data=self.rows)
+        return SimpleNamespace(data=self.client.rows)
 
 
 class _NotificationClient:
     def __init__(self, rows):
         self.rows = rows
+        self.filters = []
 
     def table(self, name):
         if name != "notifications":
             raise AssertionError(f"Unexpected table access: {name}")
-        return _NotificationQuery(self.rows)
+        return _NotificationQuery(self)
 
 
 def _notification():
@@ -144,6 +149,16 @@ class EmailSafetyTests(unittest.TestCase):
         send.assert_not_called()
         mark_sent.assert_not_called()
         mark_failed.assert_not_called()
+
+    def test_email_sender_reads_only_email_rows(self):
+        client = _NotificationClient([])
+        with (
+            patch("email_service.get_supabase", return_value=client),
+            patch("email_service.send_resend_email") as send,
+        ):
+            email_service.send_pending_notifications()
+        self.assertEqual(client.filters, [("channel", "email")])
+        send.assert_not_called()
 
     def test_test_mode_routes_only_to_configured_recipient(self):
         rows = _related_rows()

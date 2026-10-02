@@ -1,6 +1,6 @@
 import streamlit as st
 import html
-from datetime import date
+from datetime import date, datetime, timezone
 
 from matcher import calculate_match, analyze_improvements
 from ai_extractor import extract_opportunity
@@ -43,11 +43,20 @@ from helai_ui import (
     ticket_html,
 )
 from auth_service import (
+    create_authenticated_client,
     sign_up_user,
     sign_in_user,
     get_profile,
     update_profile,
     sign_out_user,
+)
+from telegram_link import (
+    LINK_CODE_MINUTES,
+    bot_link,
+    code_is_pending,
+    create_link_code,
+    disconnect as disconnect_telegram,
+    load_connection as load_telegram_connection,
 )
 
 # =========================================================
@@ -227,6 +236,20 @@ def option_label(prefix):
 
 def esc(key, **kwargs):
     return html.escape(t(key, **kwargs))
+
+
+def current_user_id():
+    return (
+        (st.session_state.auth_user or {}).get("id")
+        or (st.session_state.cloud_profile or {}).get("id")
+    )
+
+
+def user_client():
+    return create_authenticated_client(
+        st.session_state.access_token,
+        st.session_state.refresh_token,
+    )
 
 
 # =========================================================
@@ -1038,6 +1061,21 @@ saved_dob = parse_saved_date(
     )
 )
 
+
+# Telegram appears only once the profile has notify_telegram (the Telegram
+# migration has run); until then the profile works exactly as before.
+telegram_available = "notify_telegram" in saved_profile
+telegram_connection = None
+
+if telegram_available:
+    try:
+        telegram_connection = load_telegram_connection(
+            user_client(),
+            current_user_id(),
+        )
+    except Exception:
+        telegram_available = False
+
 st.html(
     f"""
     <div class="profile-callout">
@@ -1258,6 +1296,23 @@ with st.form(
             ),
         )
 
+        notify_telegram = False
+
+        if telegram_available:
+            notify_telegram = st.checkbox(
+                t("profile.telegram_notifications"),
+                value=(
+                    bool(saved_profile.get("notify_telegram"))
+                    and telegram_connection is not None
+                ),
+                disabled=telegram_connection is None,
+                help=(
+                    None
+                    if telegram_connection
+                    else t("profile.telegram_needs_connection")
+                ),
+            )
+
         profile_group(
             t("profile.group_documents"),
             t("profile.group_documents_copy"),
@@ -1358,6 +1413,12 @@ if submitted:
             "profile_complete": True,
         }
 
+        if telegram_available:
+            cloud_profile_data["notify_telegram"] = (
+                bool(notify_telegram)
+                and telegram_connection is not None
+            )
+
         with st.spinner(
             t("profile.saving")
         ):
@@ -1396,6 +1457,94 @@ if submitted:
 
             st.session_state.helai_profile_saved = True
             st.rerun()
+
+
+# =========================================================
+# TELEGRAM CONNECTION
+# The app only creates a short-lived code; the collector run
+# links the chat when the user presses Start in Telegram.
+# =========================================================
+
+if telegram_available:
+
+    with st.container(border=True):
+
+        profile_group(
+            t("telegram.title"),
+            t("telegram.copy"),
+        )
+
+        if st.session_state.pop("helai_telegram_disconnected", False):
+            st.success(t("telegram.disconnected"))
+
+        if telegram_connection:
+
+            st.success(
+                t(
+                    "telegram.connected_since",
+                    date=format_date(
+                        str(telegram_connection.get("connected_at") or "")[:10],
+                        lang,
+                    ),
+                )
+            )
+
+            if st.button(
+                t("telegram.disconnect_button"),
+                key="helai_telegram_disconnect",
+                type="secondary",
+            ):
+                try:
+                    disconnect_telegram(user_client(), current_user_id())
+                except Exception as error:
+                    st.error(t("telegram.error", message=error))
+                else:
+                    if st.session_state.cloud_profile:
+                        st.session_state.cloud_profile["notify_telegram"] = False
+                    st.session_state.pop("helai_telegram_code", None)
+                    st.session_state.helai_telegram_disconnected = True
+                    st.rerun()
+
+        else:
+
+            st.info(t("telegram.not_connected"))
+
+            pending_code = st.session_state.get("helai_telegram_code")
+
+            if pending_code and code_is_pending(pending_code["created_at"]):
+                st.link_button(
+                    t("telegram.open_bot"),
+                    bot_link(pending_code["code"]),
+                    type="primary",
+                    use_container_width=True,
+                )
+                st.caption(
+                    t(
+                        "telegram.code_help",
+                        minutes=format_number(LINK_CODE_MINUTES),
+                        code=pending_code["code"],
+                    )
+                )
+                st.caption(t("telegram.pending_help"))
+            else:
+                pending_code = None
+
+            if st.button(
+                t("telegram.connect_button"),
+                key="helai_telegram_connect",
+                type="secondary" if pending_code else "primary",
+                use_container_width=True,
+            ):
+                try:
+                    code = create_link_code(user_client(), current_user_id())
+                except Exception as error:
+                    st.error(t("telegram.error", message=error))
+                else:
+                    st.session_state.helai_telegram_code = {
+                        "code": code,
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                    }
+                    st.rerun()
 
 
 # =========================================================

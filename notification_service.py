@@ -46,14 +46,9 @@ def load_profile(user_id):
     response = (
         collector_supabase
         .table("profiles")
-        .select(
-            "id,"
-            "email,"
-            "full_name,"
-            "email_notifications,"
-            "profile_complete,"
-            "preferred_language"
-        )
+        # "*" so notify_telegram is read once the Telegram migration exists
+        # and nothing breaks before it does.
+        .select("*")
         .eq("id", user_id)
         .limit(1)
         .execute()
@@ -99,14 +94,14 @@ def load_opportunity(opportunity_id):
 # CHECK EXISTING NOTIFICATION
 # =========================================================
 
-def notification_exists(match_id):
+def notification_exists(match_id, channel="email"):
 
     response = (
         collector_supabase
         .table("notifications")
         .select("id,status")
         .eq("match_id", match_id)
-        .eq("channel", "email")
+        .eq("channel", channel)
         .limit(1)
         .execute()
     )
@@ -115,18 +110,67 @@ def notification_exists(match_id):
 
 
 # =========================================================
+# CHANNELS
+# Email keeps its original rules; Telegram needs the opt-in
+# flag and a linked chat.
+# =========================================================
+
+def telegram_connected(user_id):
+
+    response = (
+        collector_supabase
+        .table("telegram_connections")
+        .select("user_id")
+        .eq("user_id", user_id)
+        .limit(1)
+        .execute()
+    )
+
+    return bool(response.data)
+
+
+def enabled_channels(profile):
+
+    channels = []
+
+    if (
+        profile.get("email_notifications", True)
+        and profile.get("email")
+    ):
+        channels.append("email")
+
+    if (
+        profile.get("notify_telegram", False)
+        and telegram_connected(profile["id"])
+    ):
+        channels.append("telegram")
+
+    return channels
+
+
+def skipped_reason(profile):
+    """The original email-only reasons, kept for users without Telegram."""
+
+    if not profile.get(
+        "email_notifications",
+        True
+    ):
+        return "Email notifications disabled."
+
+    if not profile.get("email"):
+        return "User has no email address."
+
+    return "No notification channel enabled."
+
+
+# =========================================================
 # CREATE PENDING NOTIFICATION
 # =========================================================
 
 def create_notification(match_record):
+    """Queue one row per enabled channel; (match_id, channel) is unique."""
 
     match_id = match_record["id"]
-
-    if notification_exists(match_id):
-        return {
-            "created": False,
-            "reason": "Notification already exists."
-        }
 
     profile = load_profile(
         match_record["user_id"]
@@ -138,19 +182,26 @@ def create_notification(match_record):
             "reason": "User profile not found."
         }
 
-    if not profile.get(
-        "email_notifications",
-        True
-    ):
+    profile.setdefault("id", match_record["user_id"])
+
+    channels = enabled_channels(profile)
+
+    if not channels:
         return {
             "created": False,
-            "reason": "Email notifications disabled."
+            "reason": skipped_reason(profile)
         }
 
-    if not profile.get("email"):
+    channels = [
+        channel
+        for channel in channels
+        if not notification_exists(match_id, channel)
+    ]
+
+    if not channels:
         return {
             "created": False,
-            "reason": "User has no email address."
+            "reason": "Notification already exists."
         }
 
     opportunity = load_opportunity(
@@ -169,31 +220,39 @@ def create_notification(match_record):
             "reason": "Opportunity is not open."
         }
 
-    notification_record = {
-        "match_id": match_id,
-        "user_id": match_record["user_id"],
-        "opportunity_id": (
-            match_record["opportunity_id"]
-        ),
-        "channel": "email",
-        "status": "pending",
-        "attempts": 0
-    }
+    notifications = []
 
-    response = (
-        collector_supabase
-        .table("notifications")
-        .insert(notification_record)
-        .execute()
-    )
+    for channel in channels:
 
-    return {
-        "created": True,
-        "notification": (
+        notification_record = {
+            "match_id": match_id,
+            "user_id": match_record["user_id"],
+            "opportunity_id": (
+                match_record["opportunity_id"]
+            ),
+            "channel": channel,
+            "status": "pending",
+            "attempts": 0
+        }
+
+        response = (
+            collector_supabase
+            .table("notifications")
+            .insert(notification_record)
+            .execute()
+        )
+
+        notifications.append(
             response.data[0]
             if response.data
             else None
-        ),
+        )
+
+    return {
+        "created": True,
+        "channels": channels,
+        "notification": notifications[0],
+        "notifications": notifications,
         "profile": profile,
         "opportunity": opportunity,
         "match": match_record
@@ -254,6 +313,11 @@ def build_notification_queue():
             print(
                 "Match:",
                 f"{match_record['match_score']}%"
+            )
+
+            print(
+                "Channels:",
+                ", ".join(result["channels"])
             )
 
             print()

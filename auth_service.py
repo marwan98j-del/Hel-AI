@@ -291,6 +291,7 @@ def update_profile(
             "has_cv",
             "preferred_language",
             "email_notifications",
+            "notify_telegram",
             "profile_complete"
         }
 

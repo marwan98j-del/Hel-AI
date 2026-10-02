@@ -540,8 +540,10 @@ def mark_sent(
 def mark_failed(
     client,
     notification,
-    error
+    error,
+    final=False
 ):
+    """Record a failed send; final=True uses up the attempts so it never retries."""
     now = datetime.now(
         timezone.utc
     ).isoformat()
@@ -550,6 +552,9 @@ def mark_failed(
         notification.get("attempts")
         or 0
     ) + 1
+
+    if final:
+        attempts = max(attempts, MAX_ATTEMPTS)
 
     (
         client
@@ -575,6 +580,7 @@ def send_pending_notifications():
         client
         .table("notifications")
         .select("*")
+        .eq("channel", "email")
         .execute()
     )
 

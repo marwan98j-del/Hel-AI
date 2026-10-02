@@ -102,3 +102,18 @@ EMAIL_FROM = get_str(
     "EMAIL_FROM",
     "HelAI <onboarding@resend.dev>",
 )
+
+TELEGRAM_TEST_MODE = get_bool(
+    "TELEGRAM_TEST_MODE",
+    True,
+)
+
+TELEGRAM_TEST_CHAT_ID = get_str(
+    "TELEGRAM_TEST_CHAT_ID",
+    "",
+)
+
+TELEGRAM_BOT_USERNAME = get_str(
+    "TELEGRAM_BOT_USERNAME",
+    "HelAIOpportunityBot",
+).lstrip("@")

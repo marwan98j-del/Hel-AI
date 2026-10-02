@@ -20,6 +20,11 @@ from source_adapters import (
     get_source_adapters,
     normalize_candidate_url,
 )
+from telegram_service import (
+    process_link_codes,
+    redact,
+    send_pending_telegram,
+)
 from translation_service import run_translation_service
 
 
@@ -61,6 +66,16 @@ def already_imported(candidate):
             client=collector_supabase,
         )
     )
+
+
+def run_telegram_step(step):
+    """Telegram is additive: its failures never stop email or the run."""
+    try:
+        return step()
+    except Exception as error:
+        message = redact(error)
+        print("Telegram step failed:", message)
+        return {"error": message}
 
 
 def collect_from_source(source):
@@ -253,6 +268,13 @@ def run_full_cycle():
 
     print()
     print("========================================")
+    print("TELEGRAM LINKS")
+    print("========================================")
+
+    telegram_link_result = run_telegram_step(process_link_codes)
+
+    print()
+    print("========================================")
     print("NOTIFICATIONS")
     print("========================================")
 
@@ -267,6 +289,13 @@ def run_full_cycle():
 
     print()
     print("========================================")
+    print("TELEGRAM")
+    print("========================================")
+
+    telegram_result = run_telegram_step(send_pending_telegram)
+
+    print()
+    print("========================================")
     print("FINAL")
     print("HELAI AUTOMATION COMPLETED SUCCESSFULLY")
     print("Finished:", now_iso())
@@ -278,4 +307,6 @@ def run_full_cycle():
         "matching": matching_result,
         "notifications": notification_result,
         "email": email_result,
+        "telegram_links": telegram_link_result,
+        "telegram": telegram_result,
     }
