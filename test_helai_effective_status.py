@@ -92,7 +92,7 @@ class EffectiveStatusTests(unittest.TestCase):
         ):
             result = create_notification({"id": "m1", "user_id": "u1", "opportunity_id": "o1"})
         self.assertFalse(result["created"])
-        self.assertEqual(result["reason"], "Opportunity is not open.")
+        self.assertEqual(result["reason"], "Opportunity is closed (deadline 2026-09-18 passed).")
 
     def test_known_expired_regressions(self):
         for title, deadline in (

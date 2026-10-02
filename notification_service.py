@@ -1,6 +1,6 @@
 from collector_client import collector_supabase
 from helai_config import HELAI_MATCH_THRESHOLD
-from opportunity_rules import effective_status
+from opportunity_rules import effective_status, normalize_status
 
 
 # =========================================================
@@ -88,6 +88,30 @@ def load_opportunity(opportunity_id):
         return None
 
     return response.data[0]
+
+
+# =========================================================
+# OPEN CHECK
+# =========================================================
+
+def not_open_reason(opportunity):
+    """None while open; otherwise a reason that says why."""
+
+    status = effective_status(opportunity)
+
+    if status == "Open":
+        return None
+
+    deadline = opportunity.get("deadline")
+
+    if (
+        status == "Closed"
+        and deadline
+        and normalize_status(opportunity.get("status")) == "Open"
+    ):
+        return f"Opportunity is closed (deadline {deadline} passed)."
+
+    return f"Opportunity is not open (status: {status})."
 
 
 # =========================================================
@@ -214,10 +238,12 @@ def create_notification(match_record):
             "reason": "Opportunity not found."
         }
 
-    if effective_status(opportunity) != "Open":
+    reason = not_open_reason(opportunity)
+
+    if reason:
         return {
             "created": False,
-            "reason": "Opportunity is not open."
+            "reason": reason
         }
 
     notifications = []
