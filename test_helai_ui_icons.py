@@ -107,18 +107,19 @@ class HelAISignOutTests(unittest.TestCase):
         call = last.test
         self.assertIsInstance(call, ast.Call)
         self.assertEqual(ast.unparse(call.func), "st.button")
-        self.assertEqual(ast.literal_eval(call.args[0]), "Sign out")
+        self.assertEqual(ast.unparse(call.args[0]), "t('sidebar.sign_out')")
         keywords = {kw.arg: kw.value for kw in call.keywords}
         self.assertEqual(ast.literal_eval(keywords["key"]), "helai_sign_out")
 
     def test_sidebar_sections_render_in_order(self):
         sidebar_source = ast.unparse(sidebar_block())
         markers = (
+            "language_switcher(",
             "sidebar-brand",
-            ">Account<",
-            ">Workspace<",
-            ">Opportunity sources<",
-            "'Sign out'",
+            "sidebar.account",
+            "sidebar.workspace",
+            "sidebar.sources",
+            "sidebar.sign_out",
         )
         positions = [sidebar_source.index(marker) for marker in markers]
         self.assertEqual(positions, sorted(positions))

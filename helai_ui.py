@@ -3,14 +3,28 @@
 from __future__ import annotations
 
 import html
-from datetime import datetime
 
 import streamlit as st
 
+from helai_i18n import (
+    ACTIVE_KEY,
+    CHOICE_KEY,
+    LANGUAGE_LABELS,
+    LANGUAGES,
+    active_language,
+    format_date,
+    format_number,
+    format_percent,
+    is_rtl,
+    localize_digits,
+    normalize_language,
+    t,
+    t_value,
+)
 from opportunity_rules import effective_status
 
 
-GLOBAL_CSS = r"""
+BASE_CSS = r"""
 <style>
 :root {
     --bg-main: #0b0d12;
@@ -618,7 +632,58 @@ hr { margin: 32px 0; border: 0; border-top: 1px solid var(--border-subtle); }
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
+"""
 
+
+# Kurdish Sorani and Arabic. Inserted between BASE_CSS and ICON_GUARD_CSS so the
+# icon guard still wins for Material Symbols. The sidebar stays on the left:
+# Streamlit has no supported right-hand sidebar, and flipping it with CSS breaks
+# its collapse animation and resize handle.
+RTL_CSS = r"""
+.stApp :is(h1, h2, h3, h4, h5, h6, p, li, label, div, a, button, summary, input, textarea),
+[data-baseweb="popover"] :is(li, div) {
+    font-family: Vazirmatn, Tahoma, "Segoe UI", sans-serif;
+}
+/* Arabic-script text is never letter-spaced. */
+.stApp, .stApp *, [data-baseweb="popover"] * { letter-spacing: normal !important; }
+
+[data-testid="stMain"],
+section[data-testid="stSidebar"],
+[data-baseweb="popover"],
+[role="tooltip"] {
+    direction: rtl;
+    text-align: right;
+}
+[data-testid="stMain"] :is(input, textarea),
+section[data-testid="stSidebar"] :is(input, textarea) { direction: rtl; text-align: right; }
+/* Emails and passwords are Latin: keep them left-to-right. */
+.st-key-login_email_v2 input,
+.st-key-signup_email_v2 input,
+[data-testid="stTextInput"] input[type="password"] { direction: ltr; text-align: left; }
+[data-testid="stMain"] [dir="auto"] { text-align: right; }
+.latin { direction: ltr; unicode-bidi: isolate; }
+
+.account-status::before { margin-right: 0; margin-left: 6px; }
+.summary-panel { border-left: 0; border-right: 2px solid var(--accent); border-radius: var(--radius-sm) 0 0 var(--radius-sm); line-height: 1.95; }
+.summary-panel [dir="ltr"] { text-align: left; line-height: 1.7; }
+.summary-note { margin-bottom: 8px; color: var(--text-muted); font-size: .76rem; }
+.score-item + .score-item { border-left: 0; border-right: 1px solid var(--border-subtle); }
+@media (max-width: 1024px) {
+    .score-item:nth-child(3) { border-right: 0; }
+}
+@media (max-width: 480px) {
+    .score-item + .score-item { border-right: 0; }
+}
+"""
+
+
+VAZIRMATN_IMPORT = (
+    "<style>@import url('https://fonts.googleapis.com/css2?"
+    "family=Vazirmatn:wght@400;500;600;700;800&display=swap');</style>"
+)
+
+
+ICON_GUARD_CSS = r"""
 /* Icon guard: keep last. Material Symbols render via font ligatures, so any
    inherited font-family, letter-spacing, text-transform or RTL direction turns
    them back into literal names such as "visibility". */
@@ -641,8 +706,53 @@ hr { margin: 32px 0; border: 0; border-top: 1px solid var(--border-subtle); }
 """
 
 
-def inject_global_styles() -> None:
-    st.markdown(GLOBAL_CSS, unsafe_allow_html=True)
+GLOBAL_CSS = BASE_CSS + ICON_GUARD_CSS
+
+
+def build_global_css(lang: str) -> str:
+    """Base styles, then RTL overrides for ckb/ar, then the icon guard last."""
+    if is_rtl(lang):
+        return BASE_CSS + RTL_CSS + ICON_GUARD_CSS
+    return GLOBAL_CSS
+
+
+def inject_global_styles(lang: str | None = None) -> None:
+    lang = lang or active_language()
+    if is_rtl(lang):
+        st.markdown(VAZIRMATN_IMPORT, unsafe_allow_html=True)
+    st.markdown(build_global_css(lang), unsafe_allow_html=True)
+
+
+def language_switcher(key: str) -> None:
+    """کوردی · English · العربية; an explicit choice wins for this session."""
+    st.session_state[key] = active_language()
+
+    def apply_choice() -> None:
+        chosen = normalize_language(st.session_state.get(key))
+        if chosen:
+            st.session_state[CHOICE_KEY] = chosen
+            st.session_state[ACTIVE_KEY] = chosen
+            st.query_params["lang"] = chosen
+
+    st.segmented_control(
+        t("lang.label"),
+        LANGUAGES,
+        format_func=LANGUAGE_LABELS.get,
+        key=key,
+        on_change=apply_choice,
+        required=True,
+        label_visibility="collapsed",
+    )
+
+
+def latin(text: object) -> str:
+    """Escaped Latin-script name (source, brand) isolated inside RTL text."""
+    return f'<bdi class="latin">{html.escape(str(text))}</bdi>'
+
+
+def status_label(status: str, lang: str | None = None) -> str:
+    slug = status.lower() if status in {"Open", "Closed", "Upcoming"} else "review"
+    return t(f"status.{slug}", lang=lang)
 
 
 def section_header(number: str, eyebrow: str, title: str, description: str, anchor: str) -> None:
@@ -700,14 +810,8 @@ def render_empty_state(title: str, description: str) -> None:
     )
 
 
-def format_deadline(value: object) -> str:
-    text = str(value or "").strip()
-    if not text:
-        return "Not stated"
-    try:
-        return datetime.fromisoformat(text[:10]).strftime("%d %b %Y").upper()
-    except ValueError:
-        return text
+def format_deadline(value: object, lang: str | None = None) -> str:
+    return format_date(value, lang)
 
 
 def card_status(opportunity: dict, today: object = None) -> tuple[str, str]:
@@ -754,19 +858,19 @@ DOCUMENT_REQUIREMENT_FLAGS = (
     "requires_cv",
 )
 
-NO_DOCUMENT_REQUIREMENTS = "No document requirements found"
+NO_DOCUMENT_REQUIREMENTS = t("card.no_document_requirements", lang="en")
 
 
 def has_document_requirements(opportunity: dict) -> bool:
     return any(opportunity.get(flag) for flag in DOCUMENT_REQUIREMENT_FLAGS)
 
 
-def readiness_display(opportunity: dict, result: dict) -> tuple[str, str]:
+def readiness_display(opportunity: dict, result: dict, lang: str | None = None) -> tuple[str, str]:
     """Readiness label and tone; a 100% with nothing to check is not shown."""
     if not has_document_requirements(opportunity):
-        return NO_DOCUMENT_REQUIREMENTS, "neutral"
+        return t("card.no_document_requirements", lang=lang), "neutral"
     readiness = int(result.get("readiness") or 0)
-    return f"{readiness}%", "success" if readiness == 100 else "warning"
+    return format_percent(readiness, lang), "success" if readiness == 100 else "warning"
 
 
 def _detail_panel(title: str, items: list[str], empty: str) -> str:
@@ -782,31 +886,33 @@ def render_opportunity_card(
     opportunity: dict,
     result: dict,
     index: int,
-    active_language: str,
+    lang: str | None = None,
 ) -> None:
-    title = str(opportunity.get("title") or "Untitled Opportunity")
-    organization = str(opportunity.get("organization") or "Organization not stated")
+    lang = lang or active_language()
+    title = str(opportunity.get("title") or t("card.untitled", lang=lang))
+    organization = str(opportunity.get("organization") or t("card.no_organization", lang=lang))
     source_name = str(
-        opportunity.get("source_name") or opportunity.get("source") or "Unknown source"
+        opportunity.get("source_name") or opportunity.get("source") or t("card.unknown_source", lang=lang)
     )
     source_url = str(opportunity.get("source_url") or "")
-    opportunity_type = str(opportunity.get("type") or "Opportunity")
+    opportunity_type = str(opportunity.get("type") or "")
+    type_label = t_value("type", opportunity_type, lang) if opportunity_type else t("card.opportunity", lang=lang)
     status, status_slug = card_status(opportunity)
     eligible = bool(result.get("eligible"))
     readiness = int(result.get("readiness") or 0)
     score = int(result.get("score") or 0)
-    deadline = format_deadline(opportunity.get("deadline"))
+    deadline = format_deadline(opportunity.get("deadline"), lang)
     record_kind = str(opportunity.get("record_kind") or "").strip().lower()
     needs_review = record_kind in {"roundup", "informational"}
 
     with st.container(border=True):
         review_badge = (
-            '<span class="status-badge review">Reviewed information</span>'
+            f'<span class="status-badge review">{html.escape(t("card.reviewed_information", lang=lang))}</span>'
             if needs_review and record_kind != "opportunity"
             else ""
         )
         ai_badge = (
-            '<span class="meta-pill">AI imported</span>'
+            f'<span class="meta-pill">{html.escape(t("card.ai_imported", lang=lang))}</span>'
             if opportunity.get("is_ai_imported")
             else ""
         )
@@ -814,63 +920,75 @@ def render_opportunity_card(
             f"""
             <div class="opportunity-head">
                 <div class="opportunity-meta">
-                    <span class="meta-pill">{html.escape(source_name)}</span>
-                    <span class="meta-pill">{html.escape(opportunity_type)}</span>
-                    <span class="status-badge {status_slug}">{html.escape(status)}</span>
+                    <span class="meta-pill">{latin(source_name)}</span>
+                    <span class="meta-pill">{html.escape(type_label)}</span>
+                    <span class="status-badge {status_slug}">{html.escape(status_label(status, lang))}</span>
                     {review_badge}{ai_badge}
                 </div>
-                <h3 class="opportunity-title">{html.escape(title)}</h3>
-                <div class="opportunity-org">{html.escape(organization)}</div>
+                <h3 class="opportunity-title" dir="auto">{html.escape(title)}</h3>
+                <div class="opportunity-org" dir="auto">{html.escape(organization)}</div>
             </div>
             """
         )
 
+        # ckb shows the stored Sorani summary; en and ar show the original
+        # English text (there is no Arabic summary column yet).
         summary_ku = str(opportunity.get("summary_ku") or "").strip()
         summary_en = str(opportunity.get("summary_en") or opportunity.get("notes") or "").strip()
-        if active_language == "Kurdish Sorani" and summary_ku:
+        if lang == "ckb" and summary_ku:
             st.html(
-                f'<div class="summary-panel" dir="rtl"><span class="summary-label">پوختەی کوردی</span>{html.escape(summary_ku).replace(chr(10), "<br>")}</div>'
+                f'<div class="summary-panel" dir="rtl"><span class="summary-label">{html.escape(t("card.summary_kurdish", lang=lang))}</span>{html.escape(summary_ku).replace(chr(10), "<br>")}</div>'
             )
         elif summary_en:
+            note = ""
+            if lang in {"ckb", "ar"}:
+                note = f'<div class="summary-note">{html.escape(t(f"card.summary_missing_{lang}", lang=lang))}</div>'
             st.html(
-                f'<div class="summary-panel"><span class="summary-label">About this opportunity</span>{html.escape(summary_en).replace(chr(10), "<br>")}</div>'
+                f'<div class="summary-panel"><span class="summary-label">{html.escape(t("card.about", lang=lang))}</span>{note}<div dir="ltr">{html.escape(summary_en).replace(chr(10), "<br>")}</div></div>'
             )
 
-        eligibility_text = "Eligible" if eligible else ("Review" if needs_review else "Not eligible")
+        eligibility_text = t(
+            "card.eligible" if eligible else ("card.review" if needs_review else "card.not_eligible"),
+            lang=lang,
+        )
         eligibility_tone = "success" if eligible else ("warning" if needs_review else "danger")
-        readiness_text, readiness_tone = readiness_display(opportunity, result)
+        readiness_text, readiness_tone = readiness_display(opportunity, result, lang)
         documents_tracked = has_document_requirements(opportunity)
         st.html(
             f"""
             <div class="score-strip">
-                <div class="score-item"><div class="score-label">Match</div><div class="score-value">{score}%</div></div>
-                <div class="score-item"><div class="score-label">Eligibility</div><div class="score-value {eligibility_tone}">{html.escape(eligibility_text)}</div></div>
-                <div class="score-item"><div class="score-label">Readiness</div><div class="score-value {readiness_tone}">{html.escape(readiness_text)}</div></div>
-                <div class="score-item"><div class="score-label">Deadline</div><div class="score-value">{html.escape(deadline)}</div></div>
+                <div class="score-item"><div class="score-label">{html.escape(t("field.match", lang=lang))}</div><div class="score-value">{format_percent(score, lang)}</div></div>
+                <div class="score-item"><div class="score-label">{html.escape(t("field.eligibility", lang=lang))}</div><div class="score-value {eligibility_tone}">{html.escape(eligibility_text)}</div></div>
+                <div class="score-item"><div class="score-label">{html.escape(t("field.readiness", lang=lang))}</div><div class="score-value {readiness_tone}">{html.escape(readiness_text)}</div></div>
+                <div class="score-item"><div class="score-label">{html.escape(t("field.deadline", lang=lang))}</div><div class="score-value">{html.escape(deadline)}</div></div>
             </div>
             """
         )
 
-        st.progress(score / 100, text=f"Match relevance · {score}%")
+        st.progress(score / 100, text=t("card.match_progress", lang=lang, score=format_percent(score, lang)))
         if documents_tracked:
-            st.progress(readiness / 100, text=f"Application readiness · {readiness}%")
+            st.progress(
+                readiness / 100,
+                text=t("card.readiness_progress", lang=lang, readiness=format_percent(readiness, lang)),
+            )
 
         if eligible and not documents_tracked:
-            st.info(f"Eligible. {NO_DOCUMENT_REQUIREMENTS}; check the source for application documents.")
+            st.info(t("card.alert_eligible_no_docs", lang=lang))
         elif eligible and readiness == 100:
-            st.success("Eligible and ready to apply.")
+            st.success(t("card.alert_ready", lang=lang))
         elif eligible:
-            st.info("Eligible, with application-readiness tasks remaining.")
+            st.info(t("card.alert_tasks_remaining", lang=lang))
         elif needs_review:
-            st.warning("This record is informational or needs review and is not treated as an actionable match.")
+            st.warning(t("card.alert_needs_review", lang=lang))
         else:
-            st.warning("One or more mandatory eligibility requirements are not currently met.")
+            st.warning(t("card.alert_not_eligible", lang=lang))
 
+        # Reasons and gaps come from matcher.py and are still English.
         st.html(
             '<div class="detail-grid">'
-            + _detail_panel("Why it fits", list(result.get("reasons") or []), "No positive matching signals yet.")
-            + _detail_panel("Eligibility", list(result.get("eligibility_gaps") or []), "No mandatory eligibility gaps.")
-            + _detail_panel("Readiness", list(result.get("readiness_gaps") or []), "No tracked document gaps.")
+            + _detail_panel(t("card.why_it_fits", lang=lang), list(result.get("reasons") or []), t("card.why_empty", lang=lang))
+            + _detail_panel(t("field.eligibility", lang=lang), list(result.get("eligibility_gaps") or []), t("card.eligibility_empty", lang=lang))
+            + _detail_panel(t("field.readiness", lang=lang), list(result.get("readiness_gaps") or []), t("card.readiness_empty", lang=lang))
             + "</div>"
         )
 
@@ -878,52 +996,58 @@ def render_opportunity_card(
         with action_col:
             if source_url:
                 st.link_button(
-                    "View opportunity ↗",
+                    t("card.view", lang=lang),
                     source_url,
                     use_container_width=True,
                 )
         with details_col:
-            with st.expander("Details"):
-                st.write("**Type:**", opportunity_type)
-                st.write("**Location:**", opportunity.get("location") or "Not stated")
-                st.write("**Education:**", opportunity.get("education") or "Any")
-                st.write("**Education rule:**", opportunity.get("education_rule") or "minimum")
+            with st.expander(t("card.details", lang=lang)):
+                education_rule = opportunity.get("education_rule") or "minimum"
+                st.write(f"**{t('field.type', lang=lang)}:**", type_label)
+                st.write(f"**{t('field.location', lang=lang)}:**", opportunity.get("location") or t("common.not_stated", lang=lang))
+                st.write(f"**{t('field.education', lang=lang)}:**", t_value("education", opportunity.get("education") or "Any", lang))
+                st.write(f"**{t('import.education_rule', lang=lang)}:**", t_value("education_rule", education_rule, lang))
                 st.write(
-                    "**Residency requirement:**",
-                    opportunity.get("residency_requirement") or "None specified",
+                    f"**{t('field.residency_requirement', lang=lang)}:**",
+                    t_value("city", opportunity.get("residency_requirement"), lang)
+                    if opportunity.get("residency_requirement")
+                    else t("common.none_specified", lang=lang),
                 )
                 if opportunity.get("notes"):
-                    st.write("**Notes:**", opportunity["notes"])
-                st.write("**Source:**", source_name)
+                    st.write(f"**{t('field.notes', lang=lang)}:**", opportunity["notes"])
+                st.write(f"**{t('field.source', lang=lang)}:**", source_name)
 
 
-def render_booster_intro() -> None:
-    st.html(
-        """
-        <div class="booster-intro">
-            <div class="booster-step"><div class="booster-step-label">Current profile</div><div class="booster-step-copy">Your saved eligibility and document signals.</div></div>
-            <div class="booster-step"><div class="booster-step-label">Suggested improvement</div><div class="booster-step-copy">One practical profile action, simulated safely.</div></div>
-            <div class="booster-step"><div class="booster-step-label">Potential result</div><div class="booster-step-copy">Estimated matches or readiness the action may unlock.</div></div>
-        </div>
-        """
+def render_booster_intro(lang: str | None = None) -> None:
+    steps = "".join(
+        f'<div class="booster-step"><div class="booster-step-label">{html.escape(t(label, lang=lang))}</div>'
+        f'<div class="booster-step-copy">{html.escape(t(copy, lang=lang))}</div></div>'
+        for label, copy in (
+            ("booster.current", "booster.current_copy"),
+            ("booster.suggested", "booster.suggested_copy"),
+            ("booster.result", "booster.result_copy"),
+        )
     )
+    st.html(f'<div class="booster-intro">{steps}</div>')
 
 
-def render_booster_card(label: str, data: dict, rank: int) -> None:
+def render_booster_card(label: str, data: dict, rank: int, lang: str | None = None) -> None:
     with st.container(border=True):
+        recommendation = t("booster.recommendation", lang=lang, rank=localize_digits(f"{rank:02d}", lang))
+        # The improvement label comes from matcher.analyze_improvements (English).
         st.html(
             f"""
-            <div class="opportunity-meta"><span class="meta-pill">Recommendation {rank:02d}</span><span class="status-badge review">AI simulation</span></div>
-            <div class="booster-title">{html.escape(str(label))}</div>
+            <div class="opportunity-meta"><span class="meta-pill">{html.escape(recommendation)}</span><span class="status-badge review">{html.escape(t("booster.simulation", lang=lang))}</span></div>
+            <div class="booster-title" dir="auto">{html.escape(str(label))}</div>
             """
         )
         columns = st.columns(4)
         metrics = (
-            ("Unlocked", data["unlocked"]),
-            ("Improved", data["improved"]),
-            ("Match gain", f'+{data["score_gain"]}'),
-            ("Readiness gain", f'+{data["readiness_gain"]}'),
+            ("booster.unlocked", format_number(data["unlocked"], lang)),
+            ("booster.improved", format_number(data["improved"], lang)),
+            ("booster.match_gain", "+" + format_number(data["score_gain"], lang)),
+            ("booster.readiness_gain", "+" + format_number(data["readiness_gain"], lang)),
         )
-        for column, (metric_label, value) in zip(columns, metrics):
+        for column, (metric_key, value) in zip(columns, metrics):
             with column:
-                st.metric(metric_label, value)
+                st.metric(t(metric_key, lang=lang), value)

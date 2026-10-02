@@ -152,7 +152,7 @@ class RoundupTitleTests(unittest.TestCase):
 class ReadinessDisplayTests(unittest.TestCase):
     def test_no_document_flags_is_not_shown_as_100_percent(self):
         opportunity = {"title": "Data Science Corps (DSC)"}
-        label, _ = readiness_display(opportunity, {"readiness": 100})
+        label, _ = readiness_display(opportunity, {"readiness": 100}, lang="en")
         self.assertEqual(label, NO_DOCUMENT_REQUIREMENTS)
 
     def test_false_document_flags_count_as_none(self):
@@ -163,19 +163,20 @@ class ReadinessDisplayTests(unittest.TestCase):
             "requires_portfolio": False,
             "requires_cv": False,
         }
-        label, _ = readiness_display(opportunity, {"readiness": 100})
+        label, _ = readiness_display(opportunity, {"readiness": 100}, lang="en")
         self.assertEqual(label, NO_DOCUMENT_REQUIREMENTS)
 
     def test_tracked_documents_show_percentage(self):
         opportunity = {"title": "Chevening Scholarship Iraq 2027-2028", "requires_cv": True}
         self.assertEqual(
-            readiness_display(opportunity, {"readiness": 100}),
+            readiness_display(opportunity, {"readiness": 100}, lang="en"),
             ("100%", "success"),
         )
         self.assertEqual(
             readiness_display(
                 {"requires_ielts": True, "requires_cv": True},
                 {"readiness": 50},
+                lang="en",
             ),
             ("50%", "warning"),
         )
