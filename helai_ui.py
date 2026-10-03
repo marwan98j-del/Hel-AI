@@ -33,16 +33,19 @@ from opportunity_rules import effective_status, has_document_requirements
 
 BASE_CSS = r"""
 <style>
+/* Dark ground, warm white type. Nothing has a card, panel, border or
+   shadow: whitespace separates everything. Saffron marks the one filled
+   pill, the big match numbers, the logo, small section labels and inline
+   links; amber marks closing-soon deadlines. Mint and coral stay as text
+   colour where they carry meaning. Inputs and outline buttons keep a
+   hairline, since a control needs a visible edge to be found. */
 :root {
     --bg-main: #0E1014;
-    --bg-sidebar: #0B0D10;
     --surface-1: #171A21;
     --surface-2: #1A1E26;
     --surface-inset: #12151A;
-    --surface-hover: #1F232B;
-    --surface-input: #12151A;
-    --border-subtle: #1F232B;
     --border-strong: #252A33;
+    --border-subtle: #1F232B;
     --text-primary: #F3F1EC;
     --text-secondary: #B3B7C1;
     --text-muted: #A3A8B3;
@@ -50,21 +53,18 @@ BASE_CSS = r"""
     --accent-hover: #F7C45E;
     --accent-text: #16130B;
     --accent-soft: rgba(244, 183, 64, 0.12);
-    --success: #5FD8A4;
-    --success-text: #7BE3B6;
-    --success-soft: rgba(95, 216, 164, 0.12);
-    --danger: #F2896B;
-    --danger-text: #F6A88E;
-    --danger-soft: rgba(242, 137, 107, 0.12);
-    --warning: #F4C76A;
-    --warning-soft: rgba(244, 199, 106, 0.12);
+    --amber: #F4C76A;
+    --mint: #5FD8A4;
+    --coral: #F2896B;
     --focus-ring: #F4B740;
-    --radius-card: 22px;
-    --radius-panel: 16px;
-    --radius-inset: 14px;
-    --radius-button: 12px;
-    --font-ui: Geist, "Segoe UI", system-ui, sans-serif;
-    --font-display: "Bricolage Grotesque", Geist, "Segoe UI", sans-serif;
+    --u: 6px;
+    --gap-section: 120px;
+    --radius-control: 24px;
+    --radius-pill: 9999px;
+    --font-ui: Inter, "Segoe UI", system-ui, sans-serif;
+    --track-display: -0.04em;
+    --track-title: -1.68px;
+    --track-label: 0.35px;
 }
 
 html { scroll-behavior: smooth; scroll-padding-top: 24px; }
@@ -73,380 +73,386 @@ html, body, .stApp { background: var(--bg-main) !important; color: var(--text-pr
 /* Zero-specificity typography: Streamlit's own component classes (including
    the Material Symbols icon spans) always win over this default. */
 :where(.stApp, .stApp button, .stApp input, .stApp textarea, .stApp select) {
-    font-family: Geist, "Segoe UI", system-ui, sans-serif;
+    font-family: Inter, "Segoe UI", system-ui, sans-serif;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
 a, button, summary, [role="button"], [role="tab"], label { touch-action: manipulation; }
-a { color: var(--accent); text-underline-offset: 3px; }
-a:hover { color: var(--accent-hover); }
+a { color: var(--accent); text-underline-offset: 4px; }
+a:hover { color: var(--text-primary); }
 :where(a, button, input, textarea, select, summary, [role="button"], [role="tab"], [tabindex]):focus-visible {
     outline: 2px solid var(--focus-ring) !important;
     outline-offset: 3px !important;
 }
 
-.block-container { max-width: 1320px; padding: 1.6rem 2.4rem 5rem; overflow-x: clip; }
-header[data-testid="stHeader"] { background: transparent !important; }
+/* No Streamlit chrome above the page: the top navigation is the page's own. */
+header[data-testid="stHeader"] { display: none !important; }
+[data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"], [data-testid="collapsedControl"] { display: none !important; }
+.block-container { max-width: 1280px; padding: calc(var(--u) * 5) calc(var(--u) * 6) calc(var(--u) * 16); overflow-x: clip; }
 footer { visibility: hidden; }
-.stApp p { color: var(--text-secondary); font-size: 0.95rem; line-height: 1.65; }
-.stApp h1, .stApp h2, .stApp h3, .stApp h4 { color: var(--text-primary); font-family: var(--font-display); }
-.display { font-family: var(--font-display); }
-.accent { color: var(--accent); }
 
-/* Sidebar */
-section[data-testid="stSidebar"] {
-    background: var(--bg-sidebar) !important;
-    border-inline-end: 1px solid var(--border-subtle);
-    box-shadow: none;
+.stApp p { color: var(--text-secondary); font-size: 18px; font-weight: 200; line-height: 1.6; }
+.stApp :is(h1, h2, h3, h4, h5, h6) { color: var(--text-primary); font-weight: 400 !important; }
+.stApp strong, .stApp b { color: var(--text-primary); font-weight: 600; }
+.label {
+    color: var(--text-muted);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: var(--track-label);
+    line-height: 1.4;
+    text-transform: uppercase;
 }
-section[data-testid="stSidebar"] > div { padding-top: 1rem; }
-section[data-testid="stSidebar"] p { font-size: 0.82rem; line-height: 1.45; }
-.sidebar-brand { display: flex; align-items: center; gap: 10px; padding: 4px 2px 18px; }
-.brand-sun { flex: 0 0 auto; }
-.brand-name { color: var(--text-primary); font-family: var(--font-display); font-size: 1.3rem; font-weight: 700; }
-.brand-subtitle { color: var(--text-muted); font-size: .74rem; margin-top: 1px; }
-.sidebar-label { margin: 18px 2px 8px; color: var(--text-muted); font-size: .72rem; font-weight: 600; }
+.label.accent { color: var(--accent); }
+.label.amber { color: var(--amber); }
 
-.account-card { padding: 14px; border: 1px solid var(--border-subtle); border-radius: var(--radius-panel); background: var(--surface-inset); }
-.account-row { display: flex; align-items: center; gap: 11px; }
-.account-avatar {
-    display: grid; place-items: center; flex: 0 0 38px; width: 38px; height: 38px;
-    border-radius: 50%; background: var(--accent-soft); color: var(--accent);
-    font-size: .78rem; font-weight: 700;
-}
-.account-name, .source-name { color: var(--text-primary); font-size: .84rem; font-weight: 600; }
-.account-email { color: var(--text-muted); font-size: .72rem; overflow-wrap: anywhere; }
-.account-status { margin-top: 12px; color: var(--text-secondary); font-size: .72rem; }
-.progress-track { height: 6px; margin-top: 6px; border-radius: 999px; background: var(--border-strong); overflow: hidden; }
-.progress-fill { height: 100%; border-radius: 999px; background: var(--accent); }
-
-.side-nav { display: grid; gap: 2px; }
-.side-nav-row {
-    display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 8px 10px;
-    border-radius: var(--radius-button); color: var(--text-secondary) !important;
-    font-size: .86rem; text-decoration: none !important; transition: background .16s ease, color .16s ease;
-}
-.side-nav-row:hover { background: var(--surface-hover); color: var(--text-primary) !important; }
-.side-nav-number { min-width: 20px; color: var(--text-muted); font-size: .72rem; font-variant-numeric: tabular-nums; }
-
-.source-list { display: grid; gap: 2px; }
-.source-row { display: grid; grid-template-columns: 8px minmax(0, 1fr); gap: 10px; align-items: start; padding: 8px 4px; }
-.source-dot { width: 8px; height: 8px; margin-top: 6px; border-radius: 50%; background: var(--success); }
-.source-dot.danger { background: var(--danger); }
-.source-meta { color: var(--text-muted); font-size: .72rem; line-height: 1.4; }
-
-/* Sign out: last sidebar element, pinned to the bottom by a flexible spacer. */
-[data-testid="stSidebarUserContent"]:has(.st-key-helai_sign_out) { padding-bottom: 24px; }
-[data-testid="stSidebarUserContent"] [data-testid="stVerticalBlock"]:has(> .st-key-helai_sign_out) {
-    min-height: calc(100vh - 120px);
-    min-height: calc(100dvh - 120px);
-}
-.st-key-helai_sign_out {
-    margin-top: auto;
-    padding-top: 16px;
-    border-top: 1px solid var(--border-subtle);
-}
-section[data-testid="stSidebar"] .st-key-helai_sign_out .stButton > button[kind] {
-    width: 100%;
-    min-height: 44px;
-    border: 1px solid var(--border-strong) !important;
-    border-radius: var(--radius-button) !important;
+/* Layout wrappers never draw a box. */
+[data-testid="stForm"],
+.stApp [data-testid="stVerticalBlock"] {
+    border: 0 !important;
+    border-radius: 0 !important;
     background: transparent !important;
-    color: var(--text-secondary) !important;
     box-shadow: none !important;
-    font-size: .84rem !important;
-    font-weight: 600 !important;
-    transform: none !important;
 }
-section[data-testid="stSidebar"] .st-key-helai_sign_out .stButton > button[kind] :where(p, span) {
-    color: inherit !important;
-    -webkit-text-fill-color: currentColor;
-    opacity: 1 !important;
-    visibility: visible !important;
-}
-section[data-testid="stSidebar"] .st-key-helai_sign_out .stButton > button[kind]:hover {
-    border-color: var(--danger-soft) !important;
-    background: var(--surface-hover) !important;
-    color: var(--danger) !important;
-}
-section[data-testid="stSidebar"] .st-key-helai_sign_out .stButton > button[kind]:focus-visible {
-    outline: 2px solid var(--accent) !important;
-    outline-offset: 2px !important;
-}
+[data-testid="stForm"] { padding: 0 !important; }
 
-/* Authentication */
-body:has(.auth-page-marker) section[data-testid="stSidebar"],
-body:has(.auth-page-marker) [data-testid="collapsedControl"] { display: none !important; }
-body:has(.auth-page-marker) .block-container { max-width: 1240px; padding-top: 4rem; }
-body:has(.auth-page-marker) [data-testid="stColumn"]:last-child > div {
-    padding: 28px;
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-card);
-    background: var(--bg-sidebar);
+/* Top navigation: logo, section links, language, the one saffron pill. */
+.st-key-helai_nav { margin-bottom: calc(var(--u) * 10); }
+/* Every item takes its own width; only the links stretch, so longer Kurdish
+   and Arabic labels never push Sign out off the bar. */
+.st-key-helai_nav [data-testid="stHorizontalBlock"] { align-items: center; flex-wrap: nowrap; gap: calc(var(--u) * 3); }
+.st-key-helai_nav [data-testid="stColumn"] { flex: 0 0 auto !important; width: auto !important; min-width: 0 !important; }
+.st-key-helai_nav [data-testid="stColumn"]:nth-child(2) { flex: 1 1 auto !important; }
+.brand { display: flex; align-items: center; gap: calc(var(--u) * 2); color: var(--text-primary); font-size: 22px; font-weight: 400; letter-spacing: -0.5px; white-space: nowrap; text-decoration: none !important; }
+.brand-mark { flex: 0 0 auto; display: block; }
+.nav-links { display: flex; flex-wrap: wrap; justify-content: flex-end; column-gap: calc(var(--u) * 4); row-gap: 0; }
+.nav-link {
+    display: inline-flex; align-items: center; min-height: 44px;
+    color: var(--text-muted) !important; font-size: 14px; font-weight: 400;
+    text-decoration: none !important; white-space: nowrap; transition: color .16s ease;
 }
-.auth-wordmark { display: flex; align-items: center; gap: 10px; margin-bottom: 56px; color: var(--text-primary); font-family: var(--font-display); font-size: 1.35rem; font-weight: 700; }
-.auth-headline { max-width: 620px; margin: 0 0 18px; color: var(--text-primary); font-family: var(--font-display); font-size: clamp(2.4rem, 5vw, 4.2rem); line-height: 1.04; font-weight: 700; }
-.auth-sub { max-width: 540px; color: var(--text-secondary); font-size: 1rem; line-height: 1.75; }
-.auth-preview { max-width: 520px; margin-top: 36px; }
-.auth-preview-label { margin-bottom: 8px; color: var(--text-muted); font-size: .74rem; }
-.auth-panel-title { margin: 18px 0 6px; color: var(--text-primary); font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; }
-.auth-panel-copy { margin-bottom: 18px; color: var(--text-secondary); font-size: .9rem; }
-
-/* Segmented controls and pills */
-[data-testid="stButtonGroup"] button {
+.nav-link:hover { color: var(--text-primary) !important; }
+.nav-cta {
+    display: inline-flex; align-items: center; justify-content: center; min-height: 44px;
+    padding: 0 calc(var(--u) * 4); border-radius: var(--radius-pill);
+    background: var(--accent); color: var(--accent-text) !important;
+    font-size: 15px; font-weight: 600; text-decoration: none !important; white-space: nowrap;
+    transition: background .16s ease;
+}
+.nav-cta:hover { background: var(--accent-hover); color: var(--accent-text) !important; }
+.st-key-helai_sign_out .stButton > button[kind] {
     min-height: 44px;
-    border-radius: var(--radius-button) !important;
-    border-color: var(--border-strong) !important;
-    background: var(--surface-inset) !important;
-    color: var(--text-secondary) !important;
-    font-weight: 600 !important;
+    padding-inline: calc(var(--u) * 2) !important;
+    border: 0 !important;
+    background: transparent !important;
+    color: var(--text-muted) !important;
+    box-shadow: none !important;
+    font-size: 15px !important;
+    font-weight: 400 !important;
+    white-space: nowrap;
 }
-[data-testid="stButtonGroup"] button:hover { color: var(--text-primary) !important; border-color: var(--text-muted) !important; }
-[data-testid="stButtonGroup"] button[aria-checked="true"] {
-    background: var(--accent) !important;
+.st-key-helai_sign_out .stButton > button[kind] :where(p, span) {
+    color: inherit !important;
+    font-size: inherit !important;
+    font-weight: inherit !important;
+}
+.st-key-helai_sign_out .stButton > button[kind]:hover { background: transparent !important; color: var(--text-primary) !important; }
+.st-key-helai_sign_out .stButton > button[kind]:focus-visible { outline: 2px solid var(--focus-ring) !important; outline-offset: 2px !important; }
+
+/* Authentication: headline left, form right, nothing boxed. */
+body:has(.auth-page-marker) .block-container { padding-top: calc(var(--u) * 12); }
+.auth-wordmark { margin-bottom: calc(var(--u) * 14); }
+.auth-headline {
+    max-width: 760px; margin: 0 0 calc(var(--u) * 4);
+    color: var(--text-primary); font-size: clamp(52px, 5.4vw, 78px);
+    font-weight: 400; line-height: 1; letter-spacing: var(--track-display);
+}
+.auth-headline .muted-line { color: var(--text-muted); }
+.auth-sub { max-width: 560px; color: var(--text-secondary); font-size: 18px; font-weight: 200; line-height: 1.6; }
+.auth-preview { max-width: 640px; margin-top: calc(var(--u) * 12); }
+.auth-preview-label { margin-bottom: calc(var(--u) * 3); }
+.auth-panel-title { margin: calc(var(--u) * 6) 0 var(--u); color: var(--text-primary); font-size: 42px; font-weight: 400; line-height: 1.1; letter-spacing: var(--track-title); }
+.auth-panel-copy { margin-bottom: calc(var(--u) * 5); color: var(--text-secondary); font-size: 18px; font-weight: 200; line-height: 1.6; }
+/* The sign-in page has no navigation bar, so its submit is the one pill. */
+body:has(.auth-page-marker) .stFormSubmitButton > button {
     border-color: var(--accent) !important;
+    border-radius: var(--radius-pill) !important;
+    background: var(--accent) !important;
     color: var(--accent-text) !important;
 }
-[data-testid="stButtonGroup"] button[aria-checked="true"] :where(p, span) { color: var(--accent-text) !important; }
-.st-key-helai_filter [data-testid="stButtonGroup"] button { border-radius: 999px !important; padding-inline: 16px !important; }
-.st-key-helai_filter [data-testid="stButtonGroup"] > div { flex-wrap: wrap !important; row-gap: 8px; }
+body:has(.auth-page-marker) .stFormSubmitButton > button:hover { border-color: var(--accent-hover) !important; background: var(--accent-hover) !important; color: var(--accent-text) !important; }
 
-/* Header */
-.greeting { margin: 0; color: var(--text-primary); font-family: var(--font-display); font-size: 1.55rem; font-weight: 700; line-height: 1.3; }
-.greeting-sub { margin-top: 2px; color: var(--text-muted); font-size: .84rem; }
+/* Segmented controls (language, sign in / sign up) read as text tabs;
+   filter pills are pills. */
+[data-testid="stButtonGroup"] button {
+    min-height: 44px;
+    border: 0 !important;
+    border-radius: var(--radius-pill) !important;
+    background: transparent !important;
+    color: var(--text-muted) !important;
+    box-shadow: none !important;
+    font-weight: 400 !important;
+}
+[data-testid="stButtonGroup"] button :where(p, span) { color: inherit !important; font-size: 15px !important; font-weight: inherit !important; }
+[data-testid="stButtonGroup"] button:hover { color: var(--text-primary) !important; }
+[data-testid="stButtonGroup"] button[aria-checked="true"] { color: var(--text-primary) !important; font-weight: 600 !important; }
+.st-key-helai_filter [data-testid="stButtonGroup"] button { padding-inline: calc(var(--u) * 3) !important; }
+.st-key-helai_filter [data-testid="stButtonGroup"] button[aria-checked="true"] { background: var(--text-primary) !important; color: var(--bg-main) !important; }
+.st-key-helai_filter [data-testid="stButtonGroup"] > div { flex-wrap: wrap !important; row-gap: var(--u); }
 
-/* Hero and stat strip */
-.hero { margin: 26px 0 22px; }
-.hero-headline { max-width: 900px; margin: 0; color: var(--text-primary); font-family: var(--font-display); font-size: clamp(2.1rem, 4.2vw, 3.6rem); line-height: 1.1; font-weight: 700; }
-.hero-sub { max-width: 760px; margin-top: 14px; color: var(--text-secondary); font-size: 1rem; line-height: 1.7; }
-.stat-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 22px 0 8px; border: 1px solid var(--border-strong); border-radius: var(--radius-panel); background: var(--surface-1); overflow: hidden; }
-.stat-cell { min-width: 0; padding: 16px 18px; }
-.stat-cell + .stat-cell { border-inline-start: 1px solid var(--border-strong); }
-.stat-value { color: var(--text-primary); font-family: var(--font-display); font-size: 1.9rem; line-height: 1.1; font-weight: 700; font-variant-numeric: tabular-nums; }
+/* Greeting row */
+.greeting { margin: 0; color: var(--text-primary); font-size: 28px; font-weight: 400; line-height: 1.25; letter-spacing: -0.5px; }
+.greeting-sub { margin-top: var(--u); color: var(--text-muted); font-size: 14px; line-height: 1.5; }
+.greeting-sub .sep { padding-inline: var(--u); }
+
+/* Hero: one huge sentence, a quiet subline, four plain numbers. */
+.hero { margin: calc(var(--u) * 14) 0 0; }
+.stApp .hero-headline {
+    max-width: 1100px; margin: 0;
+    color: var(--text-muted); font-size: clamp(52px, 7.4vw, 104px);
+    font-weight: 400; line-height: 1; letter-spacing: var(--track-display);
+}
+.hero-headline .count { color: var(--text-primary); }
+.hero-sub { max-width: 760px; margin-top: calc(var(--u) * 5); color: var(--text-secondary); font-size: 18px; font-weight: 200; line-height: 1.6; }
+.stat-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: calc(var(--u) * 6); margin: calc(var(--u) * 12) 0 0; }
+.stat-cell { min-width: 0; }
+.stat-value { color: var(--text-primary); font-size: 64px; font-weight: 400; line-height: 1; letter-spacing: -0.03em; }
 .stat-value.accent { color: var(--accent); }
-.stat-label { margin-top: 4px; color: var(--text-muted); font-size: .8rem; }
+.stat-label { margin-top: calc(var(--u) * 2); }
 
 /* Sections, forms and inputs */
-.section { margin: 56px 0 18px; scroll-margin-top: 24px; }
-.section-heading-row { display: grid; grid-template-columns: 42px minmax(0,1fr); gap: 14px; align-items: start; }
-.section-number { display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid var(--border-strong); border-radius: var(--radius-button); color: var(--accent); background: var(--surface-inset); font-size: .76rem; font-weight: 700; }
-.section-eyebrow { color: var(--accent); font-size: .78rem; font-weight: 600; }
-.section-title { margin: 4px 0 6px; color: var(--text-primary); font-family: var(--font-display); font-size: clamp(1.5rem, 2.6vw, 2rem); line-height: 1.2; font-weight: 700; }
-.section-copy { max-width: 690px; color: var(--text-secondary); font-size: .92rem; line-height: 1.65; }
-.workspace-heading { display: flex; align-items: center; gap: 9px; margin-bottom: 5px; color: var(--text-primary); font-size: 1rem; font-weight: 650; }
-.spark { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; color: var(--accent); background: var(--accent-soft); }
-.workspace-copy { margin-bottom: 16px; color: var(--text-secondary); font-size: .86rem; }
-.profile-group { margin: 6px 0 16px; padding-bottom: 9px; border-bottom: 1px solid var(--border-subtle); }
-.profile-group-title { color: var(--text-primary); font-size: .9rem; font-weight: 650; }
-.profile-group-copy { margin-top: 3px; color: var(--text-muted); font-size: .76rem; }
-.profile-callout { display: flex; gap: 12px; margin-bottom: 20px; padding: 14px 16px; border: 1px solid var(--border-strong); border-radius: var(--radius-panel); background: var(--surface-inset); color: var(--text-secondary); font-size: .84rem; line-height: 1.55; }
-.card { padding: 22px; border: 1px solid var(--border-strong); border-radius: var(--radius-card); background: var(--surface-1); }
-.card-number, .ai-tag { color: var(--text-muted); font-size: .74rem; }
-.card-title { margin: 8px 0 4px; color: var(--text-primary); font-family: var(--font-display); font-size: 1.3rem; font-weight: 700; }
-.card-org { color: var(--text-secondary); font-size: .88rem; }
+.section { margin: var(--gap-section) 0 calc(var(--u) * 6); scroll-margin-top: 24px; }
+.section-eyebrow { margin-bottom: calc(var(--u) * 2); }
+.section-title { margin: 0 0 calc(var(--u) * 2); color: var(--text-primary); font-size: 48px; line-height: 1.08; font-weight: 400; letter-spacing: var(--track-title); }
+.section-copy { max-width: 720px; color: var(--text-secondary); font-size: 18px; font-weight: 200; line-height: 1.6; }
+.workspace-heading { display: flex; align-items: center; gap: calc(var(--u) * 2); margin-bottom: var(--u); color: var(--text-primary); font-size: 24px; font-weight: 400; }
+.spark { color: var(--text-muted); }
+.workspace-copy { margin-bottom: calc(var(--u) * 4); color: var(--text-secondary); font-size: 18px; font-weight: 200; }
+.profile-group { margin: calc(var(--u) * 8) 0 calc(var(--u) * 3); }
+.profile-group-title { color: var(--text-primary); font-size: 24px; font-weight: 400; line-height: 1.25; }
+.profile-group-copy { margin-top: var(--u); color: var(--text-muted); font-size: 16px; font-weight: 200; line-height: 1.55; }
+.profile-callout { display: flex; gap: calc(var(--u) * 2); max-width: 760px; margin-bottom: calc(var(--u) * 4); color: var(--text-secondary); font-size: 18px; font-weight: 200; line-height: 1.6; }
+.profile-callout strong { font-weight: 400; }
+.card { margin-top: calc(var(--u) * 6); }
+.card-number, .ai-tag { color: var(--text-muted); font-size: 14px; font-weight: 600; letter-spacing: var(--track-label); text-transform: uppercase; }
+.card-title { margin: calc(var(--u) * 2) 0 var(--u); color: var(--text-primary); font-size: 42px; font-weight: 400; line-height: 1.1; letter-spacing: var(--track-title); }
+.card-org { color: var(--text-secondary); font-size: 18px; font-weight: 200; }
 
-div[data-testid="stForm"], [data-testid="stVerticalBlockBorderWrapper"] {
-    padding: 22px;
-    border: 1px solid var(--border-strong) !important;
-    border-radius: var(--radius-card) !important;
-    background: var(--surface-1);
+label[data-testid="stWidgetLabel"] p {
+    color: var(--text-muted) !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    letter-spacing: var(--track-label);
+    text-transform: uppercase;
 }
-label[data-testid="stWidgetLabel"] p { color: var(--text-secondary) !important; font-size: .82rem !important; font-weight: 600 !important; }
 div[data-baseweb="input"] > div,
 div[data-baseweb="textarea"] > div,
 div[data-baseweb="select"] > div,
 [data-baseweb="base-input"],
 [data-baseweb="select"] > div {
-    min-height: 44px;
+    min-height: 48px;
     border: 1px solid var(--border-strong) !important;
-    border-radius: var(--radius-button) !important;
-    background: var(--surface-input) !important;
+    border-radius: var(--radius-control) !important;
+    background: transparent !important;
     box-shadow: none !important;
     transition: border-color .16s ease;
 }
+[data-testid="stTextInputRootElement"],
+[data-testid="stTextAreaRootElement"],
+[data-testid="stNumberInputContainer"],
+[data-testid="stDateInputField"] {
+    border-color: var(--border-strong) !important;
+    border-radius: var(--radius-control) !important;
+    background: transparent !important;
+    overflow: hidden;
+}
+[data-testid="stNumberInputContainer"] button { background: transparent !important; }
 div[data-baseweb="input"] > div:focus-within,
 div[data-baseweb="textarea"] > div:focus-within,
-div[data-baseweb="select"] > div:focus-within { border-color: var(--accent) !important; }
-input, textarea { color: var(--text-primary) !important; font-size: .92rem !important; }
+div[data-baseweb="select"] > div:focus-within,
+[data-testid="stTextInputRootElement"]:focus-within,
+[data-testid="stTextAreaRootElement"]:focus-within,
+[data-testid="stNumberInputContainer"]:focus-within { border-color: var(--text-primary) !important; }
+input, textarea { color: var(--text-primary) !important; font-size: 16px !important; font-weight: 400 !important; }
+input { padding-inline: calc(var(--u) * 3) !important; }
+textarea { min-height: 180px; padding: calc(var(--u) * 3) !important; }
 input::placeholder, textarea::placeholder { color: var(--text-muted) !important; opacity: 1; }
-textarea { min-height: 180px; }
-span[data-baseweb="tag"] { border: 1px solid var(--border-strong) !important; border-radius: 999px !important; background: var(--accent-soft) !important; color: var(--text-primary) !important; }
-[data-testid="stCheckbox"] { min-height: 44px; padding: 7px 9px; border-radius: var(--radius-button); }
-[data-testid="stCheckbox"]:hover { background: var(--surface-hover); }
+/* Streamlit fills chips and checkboxes with the saffron accent: chips become
+   outlines, and ticks stay dark on the fill. */
+[data-testid="stMultiSelectTagsContainer"] [data-tag] {
+    border: 1px solid var(--border-strong) !important;
+    border-radius: var(--radius-pill) !important;
+    background: transparent !important;
+    color: var(--text-primary) !important;
+}
+[data-testid="stMultiSelectTagsContainer"] [data-tag] button { color: var(--text-muted) !important; }
+[data-testid="stCheckbox"] svg polyline { stroke: var(--accent-text) !important; }
+[data-testid="stCheckbox"] { min-height: 44px; padding: var(--u) 0; }
+[data-testid="stCheckbox"] p { color: var(--text-secondary); font-size: 16px; font-weight: 400; }
+[data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] p { color: var(--text-muted) !important; font-size: 14px !important; font-weight: 400 !important; }
 
 :where(button, input, textarea, select):disabled,
-[aria-disabled="true"] { cursor: not-allowed !important; opacity: .52 !important; transform: none !important; box-shadow: none !important; }
+[aria-disabled="true"] { cursor: not-allowed !important; opacity: .5 !important; transform: none !important; box-shadow: none !important; }
 
-/* Buttons */
+/* Buttons: light outline pills. The saffron fill belongs to one pill only. */
 .stButton > button, .stFormSubmitButton > button, .stLinkButton > a {
-    min-height: 44px;
-    border-radius: var(--radius-button) !important;
-    font-size: .88rem !important;
-    font-weight: 650 !important;
-    transition: background .16s ease, border-color .16s ease !important;
+    min-height: 48px;
+    padding-inline: calc(var(--u) * 4) !important;
+    border-radius: var(--radius-control) !important;
+    box-shadow: none !important;
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    transition: background .16s ease, border-color .16s ease, color .16s ease !important;
 }
 .stButton > button[kind="primary"], .stFormSubmitButton > button {
-    border: 1px solid var(--accent) !important;
-    background: var(--accent) !important;
-    color: #16130B !important;
-    box-shadow: none;
+    border: 1px solid var(--text-primary) !important;
+    background: transparent !important;
+    color: var(--text-primary) !important;
 }
 /* Label <p> and icon follow the button colour instead of `.stApp p`. */
 .stButton > button[kind="primary"] :where(p, span),
 .stFormSubmitButton > button :where(p, span) {
     color: inherit !important;
 }
-.stButton > button[kind="primary"]:hover, .stFormSubmitButton > button:hover { background: var(--accent-hover) !important; border-color: var(--accent-hover) !important; }
-.stButton > button[kind="secondary"], .stLinkButton > a { border: 1px solid var(--border-strong) !important; background: transparent !important; color: var(--text-primary) !important; box-shadow: none; }
-.stButton > button[kind="secondary"]:hover, .stLinkButton > a:hover { background: var(--surface-hover) !important; }
+.stButton > button[kind="primary"] p,
+.stFormSubmitButton > button p { font-size: 15px; font-weight: 600; }
+.stButton > button[kind="primary"]:hover, .stFormSubmitButton > button:hover { background: var(--text-primary) !important; color: var(--bg-main) !important; }
+.stButton > button[kind="secondary"], .stLinkButton > a {
+    border: 1px solid var(--border-strong) !important;
+    background: transparent !important;
+    color: var(--text-primary) !important;
+}
+.stButton > button[kind="secondary"] p, .stLinkButton > a p { color: var(--text-primary); font-size: 15px; font-weight: 600; }
+.stButton > button[kind="secondary"]:hover, .stLinkButton > a:hover { border-color: var(--text-primary) !important; }
 
-/* Ticket cards */
-.feed { display: grid; gap: 16px; }
-.ticket {
-    position: relative;
-    display: flex;
-    border: 1px solid var(--border-strong);
-    border-radius: var(--radius-card);
-    background: var(--surface-1);
-    overflow: hidden;
+/* Opportunity rows: match score on one side, everything else as text. */
+.feed { display: grid; gap: calc(var(--u) * 16); margin-top: calc(var(--u) * 8); }
+.opp { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: calc(var(--u) * 8); align-items: start; }
+.opp-score-value {
+    margin-top: var(--u);
+    color: var(--accent); font-size: clamp(64px, 6.4vw, 92px);
+    font-weight: 400; line-height: .95; letter-spacing: var(--track-display);
 }
-.ticket-main { flex: 1 1 auto; min-width: 0; padding: 22px 24px; }
-.ticket-perf { position: relative; flex: 0 0 0; border-inline-start: 2px dashed var(--border-strong); }
-.ticket-perf::before, .ticket-perf::after {
-    content: "";
-    position: absolute;
-    inset-inline-start: -13px;
-    width: 24px;
-    height: 24px;
-    border: 1px solid var(--border-strong);
-    border-radius: 50%;
-    background: var(--bg-main);
+.opp-labels { display: flex; flex-wrap: wrap; column-gap: calc(var(--u) * 4); row-gap: var(--u); }
+.opp-title {
+    margin: calc(var(--u) * 3) 0 0;
+    color: var(--text-primary); font-size: 42px; font-weight: 400;
+    line-height: 1.1; letter-spacing: var(--track-title); overflow-wrap: anywhere;
 }
-.ticket-perf::before { top: -13px; }
-.ticket-perf::after { bottom: -13px; }
-.ticket-stub { flex: 0 0 248px; display: flex; flex-direction: column; gap: 12px; padding: 22px 22px 20px; background: var(--surface-2); }
-.pill-row { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 12px; }
-.pill {
-    display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 4px 11px;
-    border: 1px solid var(--border-strong); border-radius: 999px; color: var(--text-secondary);
-    font-size: .76rem; font-weight: 600; white-space: nowrap;
+.opp-meta { margin-top: calc(var(--u) * 2); color: var(--text-muted); font-size: 16px; font-weight: 400; }
+.opp-summary { max-width: 760px; margin-top: calc(var(--u) * 4); color: var(--text-secondary); font-size: 18px; font-weight: 200; line-height: 1.6; }
+.opp-summary-note { margin-bottom: var(--u); color: var(--text-muted); font-size: 14px; font-weight: 400; }
+.opp-facts { display: flex; flex-wrap: wrap; column-gap: calc(var(--u) * 10); row-gap: calc(var(--u) * 3); margin: calc(var(--u) * 6) 0 0; }
+.stApp .opp-facts, .stApp .opp-facts > div, .stApp .opp-facts dt { margin-inline: 0; padding: 0; }
+.stApp .opp-facts dd { margin: var(--u) 0 0; color: var(--text-primary); font-size: 18px; font-weight: 400; }
+.opp-lists { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: calc(var(--u) * 8); max-width: 900px; margin-top: calc(var(--u) * 6); }
+.list-title { margin-bottom: calc(var(--u) * 2); font-size: 14px; font-weight: 600; letter-spacing: var(--track-label); text-transform: uppercase; }
+.mint { color: var(--mint) !important; }
+.coral { color: var(--coral) !important; }
+.amber { color: var(--amber) !important; }
+.muted { color: var(--text-secondary) !important; }
+.stApp .opp-list { margin: 0; padding: 0; list-style: none; }
+.stApp .opp-list li { margin: 0 0 var(--u); padding: 0; color: var(--text-secondary); font-size: 18px; font-weight: 200; line-height: 1.5; overflow-wrap: anywhere; }
+.opp-empty { color: var(--text-muted); font-size: 18px; font-weight: 200; }
+.opp-link {
+    display: inline-flex; align-items: center; min-height: 44px; margin-top: calc(var(--u) * 5);
+    color: var(--accent) !important; font-size: 16px; font-weight: 600; text-decoration: none !important;
 }
-.pill.open { color: var(--success-text); border-color: rgba(95,216,164,.35); background: var(--success-soft); }
-.pill.closed { color: var(--danger-text); border-color: rgba(242,137,107,.35); background: var(--danger-soft); }
-.pill.upcoming, .pill.review { color: var(--warning); border-color: rgba(244,199,106,.35); background: var(--warning-soft); }
-.ticket-title { margin: 0; color: var(--text-primary); font-family: var(--font-display); font-size: clamp(1.15rem, 1.9vw, 1.42rem); line-height: 1.3; font-weight: 700; overflow-wrap: anywhere; }
-.ticket-meta { margin-top: 6px; color: var(--text-muted); font-size: .84rem; }
-.ticket-summary { margin-top: 14px; padding: 13px 15px; border: 1px solid var(--border-subtle); border-radius: var(--radius-inset); background: var(--surface-inset); color: var(--text-secondary); font-size: .88rem; line-height: 1.75; }
-.ticket-summary-note { margin-bottom: 6px; color: var(--text-muted); font-size: .76rem; }
-.ticket-lists { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 16px; }
-.list-title { margin-bottom: 6px; font-size: .8rem; font-weight: 700; }
-.list-title.mint { color: var(--success-text); }
-.list-title.coral { color: var(--danger-text); }
-.ticket-list { margin: 0; padding: 0; list-style: none; }
-.ticket-list li { position: relative; margin: 5px 0; padding-inline-start: 14px; color: var(--text-secondary); font-size: .84rem; line-height: 1.5; overflow-wrap: anywhere; }
-.ticket-list li::before { content: ""; position: absolute; inset-inline-start: 0; top: .6em; width: 5px; height: 5px; border-radius: 50%; background: var(--text-muted); }
-.ticket-list.mint li::before { background: var(--success); }
-.ticket-list.coral li::before { background: var(--danger); }
-.ticket-empty { color: var(--text-muted); font-size: .84rem; }
-.stub-label { color: var(--text-muted); font-size: .76rem; }
-.stub-score { color: var(--accent); font-family: var(--font-display); font-size: 3.6rem; line-height: 1; font-weight: 700; font-variant-numeric: tabular-nums; }
-.meter { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 3px; margin-top: 6px; }
-.meter span { height: 8px; border-radius: 3px; background: var(--border-strong); }
-.meter span.on { background: var(--accent); }
-.stub-value { margin-top: 3px; color: var(--text-primary); font-size: .9rem; font-weight: 650; }
-.stub-value.mint { color: var(--success-text); }
-.stub-value.coral { color: var(--danger-text); }
-.stub-value.amber { color: var(--warning); }
-.stub-days { margin-top: 2px; color: var(--text-secondary); font-size: .78rem; }
-.stub-days.amber { color: var(--warning); }
-.btn-saffron, .btn-outline {
-    display: flex; align-items: center; justify-content: center; min-height: 44px; margin-top: auto;
-    padding: 10px 14px; border-radius: var(--radius-button); font-size: .9rem; font-weight: 700;
-    text-align: center; text-decoration: none !important;
-}
-.btn-saffron { background: var(--accent); color: var(--accent-text) !important; }
-.btn-saffron:hover { background: var(--accent-hover); color: var(--accent-text) !important; }
-.btn-outline { border: 1px solid var(--border-strong); background: transparent; color: var(--text-secondary) !important; cursor: not-allowed; }
-.ticket.compact { opacity: .78; }
-.ticket.compact .ticket-main { padding: 16px 20px; }
-.ticket.compact .ticket-title { font-size: 1.02rem; }
-.ticket.compact .ticket-stub { flex-basis: 248px; justify-content: center; padding: 14px 18px; }
+.opp-link:hover { text-decoration: underline !important; }
+.opp-notify { display: inline-flex; align-items: center; min-height: 44px; margin-top: calc(var(--u) * 2); color: var(--text-muted); font-size: 16px; }
+.opp.compact { opacity: .62; }
+.opp.compact .opp-title { font-size: 28px; letter-spacing: -0.5px; }
+.opp.compact .opp-score-value { font-size: 28px; color: var(--text-muted); letter-spacing: normal; }
+.opp.preview { grid-template-columns: 150px minmax(0, 1fr); gap: calc(var(--u) * 5); }
+.opp.preview .opp-score-value { font-size: 64px; }
+.opp.preview .opp-title { font-size: 28px; letter-spacing: -0.5px; }
 
-/* Right rail */
-.rail-card { margin-bottom: 16px; padding: 20px; border: 1px solid var(--border-strong); border-radius: var(--radius-card); background: var(--surface-1); }
-.rail-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; color: var(--text-primary); font-family: var(--font-display); font-size: 1.05rem; font-weight: 700; }
-.boost-row { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: start; padding: 11px 0; border-top: 1px solid var(--border-subtle); }
-.boost-row:first-of-type { border-top: 0; }
-.boost-badge { display: grid; place-items: center; min-width: 44px; min-height: 30px; padding: 2px 8px; border-radius: 999px; background: var(--success-soft); color: var(--success-text); font-size: .86rem; font-weight: 700; }
-.boost-action { color: var(--text-primary); font-size: .88rem; font-weight: 600; line-height: 1.4; }
-.boost-effect { margin-top: 2px; color: var(--text-muted); font-size: .76rem; }
-.onoff { padding: 3px 12px; border-radius: 999px; font-size: .76rem; font-weight: 700; }
-.onoff.on { background: var(--success-soft); color: var(--success-text); }
-.onoff.off { background: var(--danger-soft); color: var(--danger-text); }
-.rail-copy { color: var(--text-secondary); font-size: .86rem; line-height: 1.6; }
-.rail-link { display: inline-flex; align-items: center; min-height: 44px; color: var(--accent) !important; font-size: .86rem; font-weight: 650; text-decoration: none !important; }
-.dl-row { display: grid; grid-template-columns: 58px minmax(0, 1fr); gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--border-subtle); }
-.dl-row:first-of-type { border-top: 0; }
-.dl-days { color: var(--accent); font-family: var(--font-display); font-size: 1.9rem; line-height: 1; font-weight: 700; text-align: center; }
-.dl-days.amber { color: var(--warning); }
-.dl-unit { color: var(--text-muted); font-size: .7rem; text-align: center; }
-.dl-title { color: var(--text-primary); font-size: .86rem; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
-.dl-date { margin-top: 2px; color: var(--text-muted); font-size: .76rem; }
+/* Right rail and Booster */
+.rail-card { margin-bottom: calc(var(--u) * 12); }
+.rail-card.alerts { margin-top: var(--gap-section); }
+.rail-title { display: flex; align-items: baseline; justify-content: space-between; gap: calc(var(--u) * 2); margin-bottom: calc(var(--u) * 3); color: var(--text-primary); font-size: 28px; font-weight: 400; line-height: 1.2; letter-spacing: -0.5px; }
+.boost-row { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: calc(var(--u) * 3); align-items: baseline; padding: calc(var(--u) * 3) 0; }
+.boost-badge { color: var(--text-primary); font-size: 42px; font-weight: 400; line-height: 1; letter-spacing: var(--track-title); }
+.boost-action { color: var(--text-primary); font-size: 20px; font-weight: 400; line-height: 1.35; }
+.boost-effect { margin-top: var(--u); color: var(--text-muted); font-size: 16px; font-weight: 200; }
+.onoff { font-size: 14px; font-weight: 600; letter-spacing: var(--track-label); text-transform: uppercase; }
+.onoff.on { color: var(--text-primary); }
+.onoff.off { color: var(--text-muted); }
+.rail-copy { color: var(--text-secondary); font-size: 18px; font-weight: 200; line-height: 1.6; }
+.rail-link { display: inline-flex; align-items: center; min-height: 44px; color: var(--accent) !important; font-size: 16px; font-weight: 600; text-decoration: none !important; }
+.rail-link:hover { text-decoration: underline !important; }
+.dl-row { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: calc(var(--u) * 3); align-items: start; padding: calc(var(--u) * 3) 0; }
+.dl-days { color: var(--text-primary); font-size: 42px; font-weight: 400; line-height: 1; letter-spacing: var(--track-title); }
+.dl-days.amber { color: var(--amber); }
+.dl-unit { margin-top: 4px; color: var(--text-muted); font-size: 14px; }
+.dl-title { color: var(--text-primary); font-size: 16px; font-weight: 400; line-height: 1.4; overflow-wrap: anywhere; }
+.dl-date { margin-top: 4px; color: var(--text-muted); font-size: 14px; }
 
-/* Native metrics, progress, alerts, menus */
-div[data-testid="stMetric"] { min-height: 92px; padding: 14px 15px; border: 1px solid var(--border-strong); border-radius: var(--radius-panel); background: var(--surface-inset); }
-div[data-testid="stMetricLabel"] p { color: var(--text-muted) !important; font-size: .76rem !important; }
-div[data-testid="stMetricValue"] { color: var(--text-primary) !important; font-size: 1.25rem !important; font-weight: 700 !important; }
-details { border: 1px solid var(--border-strong) !important; border-radius: var(--radius-panel) !important; background: var(--surface-inset) !important; }
-details summary { min-height: 44px; color: var(--text-secondary); font-weight: 600 !important; cursor: pointer; }
-[data-testid="stAlert"] { border: 1px solid var(--border-strong) !important; border-radius: var(--radius-panel) !important; box-shadow: none !important; }
-[data-testid="stAlert"] p { margin: 0; color: inherit !important; font-size: .86rem; line-height: 1.5; }
-[data-baseweb="popover"], [role="listbox"], [role="tooltip"] { border-color: var(--border-strong) !important; background: var(--surface-2) !important; color: var(--text-primary) !important; }
+/* Sources, at the foot of the page */
+.sources { margin-top: var(--gap-section); }
+.source-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: calc(var(--u) * 4) calc(var(--u) * 6); margin-top: calc(var(--u) * 3); }
+.source-name { color: var(--text-primary); font-size: 16px; font-weight: 400; }
+.source-meta { margin-top: 4px; color: var(--text-muted); font-size: 14px; line-height: 1.45; }
+.source-meta.coral { color: var(--coral); }
+.sources-total { margin-top: calc(var(--u) * 4); color: var(--text-muted); font-size: 14px; }
+
+/* Native metrics, alerts, expanders, menus */
+div[data-testid="stMetric"] { padding: 0; border: 0; background: transparent; }
+div[data-testid="stMetricLabel"] p { color: var(--text-muted) !important; font-size: 14px !important; font-weight: 600 !important; letter-spacing: var(--track-label); text-transform: uppercase; }
+div[data-testid="stMetricValue"] { color: var(--text-primary) !important; font-size: 28px !important; font-weight: 400 !important; }
+details { border: 0 !important; background: transparent !important; }
+details summary { min-height: 44px; padding-inline: 0 !important; color: var(--text-muted); font-weight: 400 !important; cursor: pointer; }
+[data-testid="stAlertContainer"] { padding: 0 !important; border: 0 !important; background: transparent !important; }
+[data-testid="stAlert"] { border: 0 !important; background: transparent !important; box-shadow: none !important; }
+[data-testid="stAlert"] p { margin: 0; color: var(--text-primary) !important; font-size: 18px; font-weight: 400; line-height: 1.5; }
+[data-testid="stAlertContentError"] p { color: var(--coral) !important; }
+[data-baseweb="popover"], [role="listbox"], [role="tooltip"] { border-color: var(--border-subtle) !important; background: var(--surface-2) !important; color: var(--text-primary) !important; }
 [role="option"] { min-height: 44px; }
 [role="option"]:hover, [role="option"][aria-selected="true"] { background: var(--accent-soft) !important; }
-hr { margin: 32px 0; border: 0; border-top: 1px solid var(--border-subtle); }
+hr { margin: calc(var(--u) * 10) 0; border: 0; height: 0; }
 
-.empty-state { margin: 8px 0 24px; padding: 28px; border: 1px dashed var(--border-strong); border-radius: var(--radius-card); background: var(--surface-inset); text-align: center; }
-.empty-state-mark { width: 32px; height: 4px; margin: 0 auto 16px; border-radius: 999px; background: var(--accent); }
-.empty-state-title { color: var(--text-primary); font-size: 1rem; font-weight: 700; }
-.empty-state-copy { max-width: 560px; margin: 7px auto 0; color: var(--text-secondary); font-size: .86rem; line-height: 1.6; }
-.footer { display: flex; justify-content: space-between; gap: 14px; margin-top: 64px; padding-top: 20px; border-top: 1px solid var(--border-subtle); color: var(--text-muted); font-size: .76rem; }
+.empty-state { max-width: 720px; margin: calc(var(--u) * 6) 0; }
+.empty-state-title { color: var(--text-primary); font-size: 28px; font-weight: 400; line-height: 1.25; letter-spacing: -0.5px; }
+.empty-state-copy { margin-top: calc(var(--u) * 2); color: var(--text-secondary); font-size: 18px; font-weight: 200; line-height: 1.6; }
+.footer { display: flex; justify-content: space-between; gap: calc(var(--u) * 3); margin-top: calc(var(--u) * 16); color: var(--text-muted); font-size: 14px; font-weight: 600; letter-spacing: var(--track-label); }
 
+/* Tablet: section links leave the bar; numbers go two by two. */
 @media (max-width: 1100px) {
-    .block-container { padding-inline: 1.5rem; }
+    :root { --gap-section: 96px; }
+    .block-container { padding-inline: calc(var(--u) * 4); }
+    .st-key-helai_nav [data-testid="stColumn"]:nth-child(2) { display: none; }
     .stat-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .stat-cell:nth-child(3) { border-inline-start: 0; }
-    .stat-cell:nth-child(n+3) { border-top: 1px solid var(--border-strong); }
+    .opp { grid-template-columns: 150px minmax(0, 1fr); gap: calc(var(--u) * 5); }
 }
-/* Phones: stub below the card body, horizontal perforation, stacked lists. */
+/* Phones: one column, score above each row, the bar wraps to two lines. */
 @media (max-width: 767.98px) {
-    .block-container { padding: 1rem 1rem 4rem; }
-    input, textarea, select { font-size: 1rem !important; }
-    body:has(.auth-page-marker) .block-container { padding-top: 1.25rem; }
-    .auth-wordmark { margin-bottom: 32px; }
-    .ticket { flex-direction: column; }
-    .ticket-perf { flex-basis: auto; height: 0; border-inline-start: 0; border-top: 2px dashed var(--border-strong); }
-    .ticket-perf::before, .ticket-perf::after { top: -13px; bottom: auto; }
-    .ticket-perf::before { inset-inline-start: -13px; }
-    .ticket-perf::after { inset-inline-start: auto; inset-inline-end: -13px; }
-    .ticket-stub, .ticket.compact .ticket-stub { flex-basis: auto; }
-    .ticket-lists { grid-template-columns: 1fr; }
-    .section-heading-row { grid-template-columns: 34px minmax(0,1fr); gap: 12px; }
+    :root { --gap-section: 60px; }
+    .block-container { padding: calc(var(--u) * 3) 16px calc(var(--u) * 12); }
+    input, textarea, select { font-size: 16px !important; }
+    .st-key-helai_nav { margin-bottom: calc(var(--u) * 6); }
+    .st-key-helai_nav [data-testid="stHorizontalBlock"] { flex-wrap: wrap !important; row-gap: var(--u); column-gap: calc(var(--u) * 2); }
+    .st-key-helai_nav [data-testid="stColumn"] { width: auto !important; min-width: 0 !important; flex: 0 0 auto !important; }
+    .st-key-helai_nav [data-testid="stColumn"]:nth-child(1) { flex: 1 1 auto !important; }
+    .st-key-helai_nav [data-testid="stColumn"]:nth-child(3) { order: 5; flex: 1 1 100% !important; }
+    .nav-cta { padding: 0 calc(var(--u) * 3); font-size: 14px; }
+    body:has(.auth-page-marker) .block-container { padding-top: calc(var(--u) * 4); }
+    .auth-wordmark { margin-bottom: calc(var(--u) * 6); }
+    .auth-headline { font-size: 48px; letter-spacing: var(--track-title); }
+    .hero { margin-top: calc(var(--u) * 8); }
+    .hero-headline { font-size: 48px; line-height: 1.05; letter-spacing: var(--track-title); }
+    .stat-strip { gap: calc(var(--u) * 5) calc(var(--u) * 3); margin-top: calc(var(--u) * 8); }
+    .stat-value { font-size: 48px; }
+    .section-title, .opp-title, .card-title, .auth-panel-title { font-size: 34px; letter-spacing: -1.2px; }
+    .feed { gap: calc(var(--u) * 12); }
+    .opp, .opp.preview { grid-template-columns: 1fr; gap: calc(var(--u) * 2); }
+    .opp-score-value { font-size: 64px; }
+    .opp-lists { grid-template-columns: 1fr; gap: calc(var(--u) * 4); }
     .footer { flex-direction: column; }
-    .hero-headline { font-size: clamp(1.8rem, 8vw, 2.4rem); }
-    .greeting { font-size: 1.3rem; }
-    .pill { font-size: .8rem; }
-    .ticket-title { font-size: 1.15rem; }
-    .ticket-meta, .ticket-summary, .ticket-list li, .ticket-empty,
-    .rail-copy, .boost-effect, .dl-date, .stub-days { font-size: .92rem; line-height: 1.6; }
-    .stub-label, .stat-label, .list-title { font-size: .84rem; }
-    .stub-score { font-size: 3rem; }
+    .greeting { font-size: 24px; }
 }
 @media (max-width: 480px) {
     /* Stat strip stays 2x2 from the 1100px rule. */
-    .stat-cell { padding: 14px; }
-    .stat-value { font-size: 1.6rem; }
-    .ticket-main, .ticket-stub { padding: 18px; }
+    .stat-value { font-size: 42px; letter-spacing: var(--track-title); }
+    .opp-facts { column-gap: calc(var(--u) * 6); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -456,13 +462,14 @@ hr { margin: 32px 0; border: 0; border-top: 1px solid var(--border-subtle); }
 
 
 # Kurdish Sorani and Arabic. Inserted between BASE_CSS and ICON_GUARD_CSS so the
-# icon guard still wins for Material Symbols. The sidebar stays on the left:
-# Streamlit has no supported right-hand sidebar, and flipping it with CSS breaks
-# its collapse animation and resize handle.
+# icon guard still wins for Material Symbols. Same weights as the Latin design,
+# but never any tracking: negative letter-spacing breaks Arabic-script joins.
 RTL_CSS = r"""
 :root {
     --font-ui: Vazirmatn, Tahoma, "Segoe UI", sans-serif;
-    --font-display: Vazirmatn, Tahoma, "Segoe UI", sans-serif;
+    --track-display: normal;
+    --track-title: normal;
+    --track-label: normal;
 }
 .stApp :is(h1, h2, h3, h4, h5, h6, p, li, label, div, a, button, summary, input, textarea),
 [data-baseweb="popover"] :is(li, div) {
@@ -472,34 +479,34 @@ RTL_CSS = r"""
 .stApp, .stApp *, [data-baseweb="popover"] * { letter-spacing: normal !important; }
 
 [data-testid="stMain"],
-section[data-testid="stSidebar"],
 [data-baseweb="popover"],
 [role="tooltip"] {
     direction: rtl;
     text-align: right;
 }
-[data-testid="stMain"] :is(input, textarea),
-section[data-testid="stSidebar"] :is(input, textarea) { direction: rtl; text-align: right; }
+[data-testid="stMain"] :is(input, textarea) { direction: rtl; text-align: right; }
 /* Emails and passwords are Latin: keep them left-to-right. */
 .st-key-login_email_v2 input,
 .st-key-signup_email_v2 input,
 [data-testid="stTextInput"] input[type="password"] { direction: ltr; text-align: left; }
 [data-testid="stMain"] [dir="auto"] { text-align: right; }
 .latin { direction: ltr; unicode-bidi: isolate; }
-.ticket-summary [dir="ltr"] { text-align: left; line-height: 1.65; }
-.stub-score, .stat-value, .dl-days { font-weight: 800; }
+.opp-summary [dir="ltr"] { text-align: left; }
+/* Vazirmatn sits taller than Inter; give the large lines room. */
+.hero-headline, .auth-headline { line-height: 1.25; }
+.section-title, .opp-title, .card-title, .auth-panel-title { line-height: 1.35; }
+.opp-score-value, .stat-value, .dl-days, .boost-badge { line-height: 1.15; }
 """
 
 
 FONT_IMPORTS = {
     "en": (
         "<style>@import url('https://fonts.googleapis.com/css2?"
-        "family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800"
-        "&family=Geist:wght@400;500;600;700&display=swap');</style>"
+        "family=Inter:wght@200;400;600&display=swap');</style>"
     ),
     "rtl": (
         "<style>@import url('https://fonts.googleapis.com/css2?"
-        "family=Vazirmatn:wght@400;500;600;700;800&display=swap');</style>"
+        "family=Vazirmatn:wght@200;400;600&display=swap');</style>"
     ),
 }
 
@@ -530,7 +537,7 @@ ICON_GUARD_CSS = r"""
 GLOBAL_CSS = BASE_CSS + ICON_GUARD_CSS
 
 _SUN_SVG = (
-    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">'
+    '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24">'
     '<circle cx="12" cy="12" r="4.2" fill="#F4B740"/>'
     '<g stroke="#F4B740" stroke-width="2" stroke-linecap="round">'
     '<line x1="12" y1="1.8" x2="12" y2="4.4"/><line x1="12" y1="19.6" x2="12" y2="22.2"/>'
@@ -539,9 +546,9 @@ _SUN_SVG = (
     '<line x1="4.8" y1="19.2" x2="6.6" y2="17.4"/><line x1="17.4" y1="6.6" x2="19.2" y2="4.8"/>'
     "</g></svg>"
 )
-# st.html sanitizes inline <svg>, so the sun ships as an image data URI.
+# st.html sanitizes inline <svg>, so the logo mark ships as an image data URI.
 SUN_ICON = (
-    '<img class="brand-sun" width="24" height="24" alt="" '
+    '<img class="brand-mark" width="28" height="28" alt="" '
     'src="data:image/svg+xml;base64,' + base64.b64encode(_SUN_SVG.encode()).decode() + '">'
 )
 
@@ -618,14 +625,9 @@ def section_header(number: str, eyebrow: str, title: str, description: str, anch
     st.html(
         f"""
         <section class="section" id="{html.escape(anchor)}">
-            <div class="section-heading-row">
-                <div class="section-number">{html.escape(number)}</div>
-                <div>
-                    <div class="section-eyebrow">{html.escape(eyebrow)}</div>
-                    <h2 class="section-title">{html.escape(title)}</h2>
-                    <div class="section-copy">{html.escape(description)}</div>
-                </div>
-            </div>
+            <div class="section-eyebrow label accent">{html.escape(number)}&ensp;{html.escape(eyebrow)}</div>
+            <h2 class="section-title">{html.escape(title)}</h2>
+            <div class="section-copy">{html.escape(description)}</div>
         </section>
         """
     )
@@ -671,7 +673,6 @@ def render_empty_state(title: str, description: str) -> None:
     st.html(
         f"""
         <div class="empty-state" role="status">
-            <div class="empty-state-mark"></div>
             <div class="empty-state-title">{html.escape(title)}</div>
             <div class="empty-state-copy">{html.escape(description)}</div>
         </div>
@@ -823,14 +824,48 @@ def filter_results(results: list[tuple[dict, dict]], mode: str, query: str = "",
     return filtered
 
 
-def render_header(name: str, lang: str, search_key: str, switcher_key: str) -> str:
-    """Greeting, search and language switcher; returns the search text."""
-    greeting_col, search_col, switch_col = st.columns([1.35, 1.2, 0.95], vertical_alignment="center")
+NAV_SECTIONS = (
+    ("ai-import", "nav.ai_import"),
+    ("cloud-profile", "nav.cloud_profile"),
+    ("opportunity-booster", "nav.opportunity_booster"),
+    ("opportunity-map", "nav.opportunity_map"),
+)
+
+
+def nav_brand_html() -> str:
+    return f'<div class="brand">{SUN_ICON}{latin("HelAI")}</div>'
+
+
+def nav_links_html(lang: str) -> str:
+    """Section links, in page order."""
+    links = "".join(
+        f'<a class="nav-link" href="#{anchor}">{html.escape(t(key, lang=lang))}</a>'
+        for anchor, key in NAV_SECTIONS
+    )
+    return f'<nav class="nav-links" aria-label="{html.escape(t("sidebar.workspace", lang=lang))}">{links}</nav>'
+
+
+def nav_cta_html(has_profile: bool, lang: str) -> str:
+    """The page's one filled pill: matches once there is a profile to match."""
+    if has_profile:
+        return f'<a class="nav-cta" href="#opportunity-map">{html.escape(t("nav.cta_matches", lang=lang))}</a>'
+    return f'<a class="nav-cta" href="#cloud-profile">{html.escape(t("nav.cta_profile", lang=lang))}</a>'
+
+
+def render_header(name: str, email: str, completion: int, lang: str, search_key: str) -> str:
+    """Greeting with the account line, and search; returns the search text."""
+    greeting_col, search_col = st.columns([1.5, 1], vertical_alignment="center")
     with greeting_col:
         first_name = (name or "").split()[0] if (name or "").split() else name
+        details = [
+            html.escape(format_date(datetime.now(IRAQ_TIME).date(), lang)),
+            latin(email) if email else "",
+            html.escape(t("sidebar.profile_complete", lang=lang, pct=format_percent(completion, lang))),
+        ]
+        account = '<span class="sep" aria-hidden="true">·</span>'.join(part for part in details if part)
         st.html(
             f'<h1 class="greeting">{t_html(greeting_key(), lang, name=f"<bdi>{html.escape(first_name)}</bdi>")}</h1>'
-            f'<div class="greeting-sub">{html.escape(format_date(datetime.now(IRAQ_TIME).date(), lang))}</div>'
+            f'<div class="greeting-sub">{account}</div>'
         )
     with search_col:
         query = st.text_input(
@@ -840,15 +875,13 @@ def render_header(name: str, lang: str, search_key: str, switcher_key: str) -> s
             label_visibility="collapsed",
             icon=":material/search:",
         )
-    with switch_col:
-        language_switcher(switcher_key)
     return query
 
 
 def render_hero(kpis: dict, total_open: int, source_names: list[str], lang: str) -> None:
     template, phrase = count_phrase(kpis["eligible"], lang)
     headline = html.escape(template).replace(
-        "{count}", f'<span class="accent">{html.escape(phrase)}</span>'
+        "{count}", f'<span class="count">{html.escape(phrase)}</span>'
     )
     sources = " · ".join(latin(name) for name in source_names)
     subline = t_html("hero.subline", lang, total=html.escape(format_number(total_open, lang)), sources=sources)
@@ -860,7 +893,7 @@ def render_hero(kpis: dict, total_open: int, source_names: list[str], lang: str)
     )
     strip = "".join(
         f'<div class="stat-cell"><div class="stat-value{tone}">{html.escape(value)}</div>'
-        f'<div class="stat-label">{html.escape(label)}</div></div>'
+        f'<div class="stat-label label">{html.escape(label)}</div></div>'
         for label, value, tone in cells
     )
     st.html(
@@ -873,28 +906,25 @@ def render_hero(kpis: dict, total_open: int, source_names: list[str], lang: str)
 
 def _list_html(items: list[str], tone: str, empty: str, lang: str | None = None) -> str:
     if not items:
-        return f'<div class="ticket-empty">{html.escape(empty)}</div>'
+        return f'<div class="opp-empty">{html.escape(empty)}</div>'
     rows = "".join(
         f'<li>{html.escape(translate_match_message(item, lang))}</li>'
         for item in items[:MAX_LIST_ITEMS]
     )
-    return f'<ul class="ticket-list {tone}">{rows}</ul>'
+    return f'<ul class="opp-list {tone}-list">{rows}</ul>'
 
 
-def _meter_html(opportunity: dict, result: dict, lang: str) -> str:
-    label, _ = readiness_display(opportunity, result, lang)
-    if not has_document_requirements(opportunity):
-        return f'<div class="stub-value">{html.escape(label)}</div>'
-    filled = round(int(result.get("readiness") or 0) / 10)
-    segments = "".join(f'<span class="{"on" if n < filled else ""}"></span>' for n in range(10))
-    return (
-        f'<div class="meter" role="img" aria-label="{html.escape(label)}">{segments}</div>'
-        f'<div class="stub-days">{html.escape(label)}</div>'
-    )
+def _fact_html(label: str, value: str, tone: str = "") -> str:
+    tone_class = f' class="{tone}"' if tone else ""
+    return f'<div><dt class="label">{html.escape(label)}</dt><dd{tone_class}>{html.escape(value)}</dd></div>'
+
+
+def _labels_html(parts: list[str]) -> str:
+    return f'<div class="opp-labels">{"".join(parts)}</div>'
 
 
 def ticket_html(opportunity: dict, result: dict, lang: str | None = None, today: date | None = None) -> str:
-    """One opportunity as a ticket: details on the main side, score on the stub."""
+    """One opportunity as a row: the match score on one side, the rest as text."""
     lang = lang or active_language()
     title = str(opportunity.get("title") or t("card.untitled", lang=lang))
     organization = str(opportunity.get("organization") or t("card.no_organization", lang=lang))
@@ -916,79 +946,80 @@ def ticket_html(opportunity: dict, result: dict, lang: str | None = None, today:
         )
         if part
     )
-    pills = (
-        f'<span class="pill">{latin(source_name)}</span>'
-        f'<span class="pill">{html.escape(type_label)}</span>'
-        f'<span class="pill {status_slug}">{html.escape(status_label(status, lang))}</span>'
-    )
+    deadline_text = f"{deadline} · {days_left}" if days_left else deadline
+    labels = [
+        f'<span class="label">{latin(source_name)}</span>',
+        f'<span class="label">{html.escape(type_label)}</span>',
+        f'<span class="label status-{status_slug}">{html.escape(status_label(status, lang))}</span>',
+        f'<span class="label{" amber" if soon and status == "Open" else ""}">{html.escape(deadline_text)}</span>',
+    ]
     if opportunity.get("is_ai_imported"):
-        pills += f'<span class="pill">{html.escape(t("card.ai_imported", lang=lang))}</span>'
+        labels.append(f'<span class="label">{html.escape(t("card.ai_imported", lang=lang))}</span>')
 
     if status != "Open":
         return (
-            f'<article class="ticket compact">'
-            f'<div class="ticket-main"><div class="pill-row">{pills}</div>'
-            f'<h3 class="ticket-title" dir="auto">{html.escape(title)}</h3>'
-            f'<div class="ticket-meta">{meta} · {html.escape(deadline)}</div></div>'
-            f'<div class="ticket-perf" aria-hidden="true"></div>'
-            f'<aside class="ticket-stub"><span class="btn-outline" role="button" aria-disabled="true" '
-            f'title="{html.escape(t("card.coming_soon", lang=lang))}">{html.escape(t("card.notify_next", lang=lang))}</span></aside>'
-            f"</article>"
+            f'<article class="opp compact">'
+            f'<div class="opp-score" aria-hidden="true"></div>'
+            f'<div class="opp-body">{_labels_html(labels)}'
+            f'<h3 class="opp-title" dir="auto">{html.escape(title)}</h3>'
+            f'<div class="opp-meta">{meta}</div>'
+            f'<span class="opp-notify" role="button" aria-disabled="true" '
+            f'title="{html.escape(t("card.coming_soon", lang=lang))}">{html.escape(t("card.notify_next", lang=lang))}</span>'
+            f"</div></article>"
         )
 
     summary_ku = normalize_sorani_terms(opportunity.get("summary_ku")).strip()
     summary_en = str(opportunity.get("summary_en") or opportunity.get("notes") or "").strip()
     if lang == "ckb" and summary_ku:
-        summary = f'<div class="ticket-summary">{html.escape(summary_ku)}</div>'
+        summary = f'<div class="opp-summary">{html.escape(summary_ku)}</div>'
     elif summary_en:
         note = (
-            f'<div class="ticket-summary-note">{html.escape(t(f"card.summary_missing_{lang}", lang=lang))}</div>'
+            f'<div class="opp-summary-note">{html.escape(t(f"card.summary_missing_{lang}", lang=lang))}</div>'
             if lang in {"ckb", "ar"}
             else ""
         )
-        summary = f'<div class="ticket-summary">{note}<div dir="ltr">{html.escape(summary_en)}</div></div>'
+        summary = f'<div class="opp-summary">{note}<div dir="ltr">{html.escape(summary_en)}</div></div>'
     else:
         summary = ""
+
+    if eligible:
+        eligibility, tone = t("card.eligible", lang=lang), "mint"
+    elif needs_review:
+        eligibility, tone = t("card.review", lang=lang), "muted"
+    else:
+        eligibility, tone = t("card.not_eligible", lang=lang), "coral"
+    readiness, _ = readiness_display(opportunity, result, lang)
+    facts = (
+        f'<dl class="opp-facts">'
+        f'{_fact_html(t("field.eligibility", lang=lang), eligibility, tone)}'
+        f'{_fact_html(t("field.readiness", lang=lang), readiness)}'
+        f"</dl>"
+    )
 
     # Reasons and gaps come from matcher.py in English; translated for display.
     missing = list(result.get("eligibility_gaps") or []) + list(result.get("readiness_gaps") or [])
     lists = (
-        f'<div class="ticket-lists">'
+        f'<div class="opp-lists">'
         f'<div><div class="list-title mint">{html.escape(t("card.why_it_fits", lang=lang))}</div>'
         f'{_list_html(list(result.get("reasons") or []), "mint", t("card.why_empty", lang=lang), lang)}</div>'
         f'<div><div class="list-title coral">{html.escape(t("card.still_missing", lang=lang))}</div>'
         f'{_list_html(missing, "coral", t("email.nothing_missing", lang=lang), lang)}</div>'
         f"</div>"
     )
-
-    if eligible:
-        eligibility, tone = t("card.eligible", lang=lang), "mint"
-    elif needs_review:
-        eligibility, tone = t("card.review", lang=lang), "amber"
-    else:
-        eligibility, tone = t("card.not_eligible", lang=lang), "coral"
-    days_html = f'<div class="stub-days{" amber" if soon else ""}">{html.escape(days_left)}</div>' if days_left else ""
-    button = (
-        f'<a class="btn-saffron" href="{html.escape(source_url, quote=True)}" target="_blank" rel="noopener">'
-        f'{html.escape(t("card.view", lang=lang).rstrip(" ↗"))}</a>'
+    link = (
+        f'<a class="opp-link" href="{html.escape(source_url, quote=True)}" target="_blank" rel="noopener">'
+        f'{html.escape(t("card.view", lang=lang))}</a>'
         if source_url
         else ""
     )
     return (
-        f'<article class="ticket">'
-        f'<div class="ticket-main"><div class="pill-row">{pills}</div>'
-        f'<h3 class="ticket-title" dir="auto">{html.escape(title)}</h3>'
-        f'<div class="ticket-meta">{meta}</div>{summary}{lists}</div>'
-        f'<div class="ticket-perf" aria-hidden="true"></div>'
-        f'<aside class="ticket-stub">'
-        f'<div><div class="stub-label">{html.escape(t("field.match", lang=lang))}</div>'
-        f'<div class="stub-score">{html.escape(format_percent(int(result.get("score") or 0), lang))}</div></div>'
-        f'<div><div class="stub-label">{html.escape(t("field.readiness", lang=lang))}</div>{_meter_html(opportunity, result, lang)}</div>'
-        f'<div><div class="stub-label">{html.escape(t("field.eligibility", lang=lang))}</div>'
-        f'<div class="stub-value {tone}">{html.escape(eligibility)}</div></div>'
-        f'<div><div class="stub-label">{html.escape(t("field.deadline", lang=lang))}</div>'
-        f'<div class="stub-value{" amber" if soon else ""}">{html.escape(deadline)}</div>{days_html}</div>'
-        f"{button}</aside></article>"
+        f'<article class="opp">'
+        f'<div class="opp-score"><div class="label">{html.escape(t("field.match", lang=lang))}</div>'
+        f'<div class="opp-score-value">{html.escape(format_percent(int(result.get("score") or 0), lang))}</div></div>'
+        f'<div class="opp-body">{_labels_html(labels)}'
+        f'<h3 class="opp-title" dir="auto">{html.escape(title)}</h3>'
+        f'<div class="opp-meta">{meta}</div>{summary}{facts}{lists}{link}</div>'
+        f"</article>"
     )
 
 
@@ -1002,7 +1033,7 @@ def render_opportunity_card(
 
 
 def render_booster_card(improvements: list, lang: str) -> None:
-    """Section 04 body; its section header supplies the title and anchor."""
+    """Section 03 body; its section header supplies the title and anchor."""
     rows = "".join(
         f'<div class="boost-row">'
         f'<span class="boost-badge" dir="ltr">+{html.escape(format_number(data["unlocked"] or data["improved"], lang))}</span>'
@@ -1012,14 +1043,14 @@ def render_booster_card(improvements: list, lang: str) -> None:
         for label, data in improvements[:5]
     ) or f'<div class="rail-copy">{html.escape(t("booster.all_covered", lang=lang))}</div>'
     st.html(
-        f'<section class="rail-card">{rows}</section>'
+        f'<section class="booster">{rows}</section>'
     )
 
 
 def render_alerts_card(enabled: bool, lang: str) -> None:
     state = "on" if enabled else "off"
     st.html(
-        f'<section class="rail-card"><div class="rail-title">{html.escape(t("rail.alerts_title", lang=lang))}'
+        f'<section class="rail-card alerts"><div class="rail-title">{html.escape(t("rail.alerts_title", lang=lang))}'
         f'<span class="onoff {state}">{html.escape(t(f"rail.alerts_{state}", lang=lang))}</span></div>'
         f'<div class="rail-copy">{html.escape(t(f"rail.alerts_copy_{state}", lang=lang))}</div>'
         f'<a class="rail-link" href="#cloud-profile">{html.escape(t("email.manage_alerts", lang=lang))}</a></section>'
@@ -1052,6 +1083,24 @@ def render_deadlines_rail(results: list[tuple[dict, dict]], lang: str, today: da
     st.html(deadlines_html(results, lang, today))
 
 
+def sources_html(sources: list[tuple[str, str, bool]], loaded: int, lang: str) -> str:
+    """Each source with its last run, then how many opportunities are loaded.
+
+    `sources` holds (name, run detail, failed) rows.
+    """
+    rows = "".join(
+        f'<div><div class="source-name">{latin(name)}</div>'
+        f'<div class="source-meta{" coral" if failed else ""}">{html.escape(detail)}</div></div>'
+        for name, detail, failed in sources
+    )
+    return (
+        f'<section class="sources"><div class="label accent">{html.escape(t("sidebar.sources", lang=lang))}</div>'
+        f'<div class="source-list">{rows}</div>'
+        f'<div class="sources-total">{html.escape(t("sidebar.opportunities_loaded", lang=lang, count=format_number(loaded, lang)))}</div>'
+        f"</section>"
+    )
+
+
 PREVIEW_SCORE = 87  # Fictional example on the sign-in page, labelled as such.
 PREVIEW_DAYS_LEFT = 30
 
@@ -1063,34 +1112,34 @@ def preview_ticket_html(lang: str, today: date | None = None) -> str:
         "deadline": (today + timedelta(days=PREVIEW_DAYS_LEFT)).isoformat(),
     }
     deadline, days_left, soon = deadline_info(example, lang, today)
+    deadline_text = f"{deadline} · {days_left}" if days_left else deadline
+    labels = [
+        f'<span class="label">{html.escape(t_value("type", "Scholarships", lang))}</span>',
+        f'<span class="label">{html.escape(status_label("Open", lang))}</span>',
+        f'<span class="label{" amber" if soon else ""}">{html.escape(deadline_text)}</span>',
+    ]
     return (
-        f'<article class="ticket" aria-label="{html.escape(t("signin.preview", lang=lang))}">'
-        f'<div class="ticket-main"><div class="pill-row">'
-        f'<span class="pill">{html.escape(t("signin.preview", lang=lang))}</span>'
-        f'<span class="pill">{html.escape(t_value("type", "Scholarships", lang))}</span>'
-        f'<span class="pill open">{html.escape(status_label("Open", lang))}</span></div>'
-        f'<h3 class="ticket-title">{html.escape(t("signin.example_title", lang=lang))}</h3>'
-        f'<div class="ticket-meta">{html.escape(t("signin.example_org", lang=lang))}</div>'
-        f'<div class="ticket-meta"><span class="list-title mint">{html.escape(t("card.eligible", lang=lang))}</span></div></div>'
-        f'<div class="ticket-perf" aria-hidden="true"></div>'
-        f'<aside class="ticket-stub" style="flex-basis: 170px;">'
-        f'<div><div class="stub-label">{html.escape(t("field.match", lang=lang))}</div>'
-        f'<div class="stub-score" style="font-size: 2.6rem;">{html.escape(format_percent(PREVIEW_SCORE, lang))}</div></div>'
-        f'<div><div class="stub-value{" amber" if soon else ""}">{html.escape(deadline)}</div>'
-        f'<div class="stub-days">{html.escape(days_left)}</div></div></aside></article>'
+        f'<article class="opp preview" aria-label="{html.escape(t("signin.preview", lang=lang))}">'
+        f'<div class="opp-score"><div class="label">{html.escape(t("field.match", lang=lang))}</div>'
+        f'<div class="opp-score-value">{html.escape(format_percent(PREVIEW_SCORE, lang))}</div></div>'
+        f'<div class="opp-body">{_labels_html(labels)}'
+        f'<h3 class="opp-title">{html.escape(t("signin.example_title", lang=lang))}</h3>'
+        f'<div class="opp-meta">{html.escape(t("signin.example_org", lang=lang))}</div>'
+        f'<dl class="opp-facts">{_fact_html(t("field.eligibility", lang=lang), t("card.eligible", lang=lang), "mint")}</dl>'
+        f"</div></article>"
     )
 
 
 def sign_in_intro_html(lang: str, today: date | None = None) -> str:
     preview_html = (
-        f'<div class="auth-preview"><div class="auth-preview-label">{html.escape(t("signin.preview", lang=lang))}</div>'
+        f'<div class="auth-preview"><div class="label accent auth-preview-label">{html.escape(t("signin.preview", lang=lang))}</div>'
         f"{preview_ticket_html(lang, today)}</div>"
     )
     return (
         f'<section class="auth-intro">'
-        f'<div class="auth-wordmark">{SUN_ICON}{latin("HelAI")}</div>'
+        f'<div class="auth-wordmark brand">{SUN_ICON}{latin("HelAI")}</div>'
         f'<h1 class="auth-headline">{html.escape(t("signin.headline_1", lang=lang))} '
-        f'<span class="accent">{html.escape(t("signin.headline_2", lang=lang))}</span></h1>'
+        f'<span class="muted-line">{html.escape(t("signin.headline_2", lang=lang))}</span></h1>'
         f'<div class="auth-sub">{html.escape(t("signin.subline", lang=lang))}</div>'
         f"{preview_html}</section>"
     )

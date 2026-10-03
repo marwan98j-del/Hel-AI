@@ -1,5 +1,6 @@
 import unittest
 from datetime import date, datetime
+from html import escape
 
 from helai_i18n import count_phrase, translate_booster_label
 from helai_ui import (
@@ -37,30 +38,50 @@ NOT_ELIGIBLE = dict(ELIGIBLE, eligible=False)
 
 
 class TicketTests(unittest.TestCase):
-    def test_open_ticket_has_stub_score_meter_and_button(self):
+    def test_open_row_has_score_facts_lists_and_link(self):
         html = ticket_html(dict(OPEN, requires_cv=True), ELIGIBLE, "ckb", TODAY)
-        self.assertIn('class="ticket"', html)
-        self.assertIn('class="ticket-perf"', html)
-        self.assertIn("٪٦٢", html)
-        self.assertEqual(html.count('<span class="on">'), 5)  # 50% -> 5 of 10 segments
-        self.assertIn("btn-saffron", html)
+        self.assertIn('class="opp"', html)
+        self.assertIn('class="opp-score-value">٪٦٢<', html)
+        self.assertIn("<dd>٪٥٠</dd>", html)  # readiness as plain text
+        self.assertIn('<dd class="mint">', html)  # eligible
+        self.assertIn('class="list-title mint"', html)
+        self.assertIn('class="list-title coral"', html)
+        self.assertIn('class="opp-link"', html)
         self.assertIn(OPEN["summary_ku"], html)
         self.assertIn(">Opportunity Desk<", html)
         self.assertIn("٨ ڕۆژ ماوە", html)
-        self.assertIn("stub-value amber", html)  # closing within 14 days
+        self.assertIn('class="label amber"', html)  # closing within 14 days
 
-    def test_no_document_flags_shows_text_not_meter(self):
+    def test_no_ticket_border_perforation_stub_or_meter(self):
+        html = ticket_html(dict(OPEN, requires_cv=True), ELIGIBLE, "en", TODAY)
+        for gone in ("ticket", "perf", "stub", "meter", "btn-saffron", "pill"):
+            self.assertNotIn(gone, html)
+
+    def test_no_document_flags_shows_text(self):
         html = ticket_html(OPEN, ELIGIBLE, "en", TODAY)
-        self.assertIn("No document requirements found", html)
-        self.assertNotIn('class="meter"', html)
+        self.assertIn("<dd>No document requirements found</dd>", html)
 
-    def test_closed_ticket_is_compact_with_disabled_notify(self):
+    def test_every_piece_of_information_is_kept(self):
+        opportunity = dict(OPEN, location="United Kingdom", is_ai_imported=True)
+        html = ticket_html(opportunity, NOT_ELIGIBLE, "en", TODAY)
+        for text in (
+            "Opportunity Desk", "Scholarship", "Open", "12 OCT 2026", "8 days left",
+            OPEN["title"], OPEN["organization"], "United Kingdom", escape(OPEN["summary_en"]),
+            "AI imported", "Match", "62%", "Eligibility", "Not eligible", "Readiness",
+            "Why it fits", "You meet the age requirement", "Still missing", "Missing document: CV",
+            "View opportunity", OPEN["source_url"],
+        ):
+            with self.subTest(text=text):
+                self.assertIn(text, html)
+        self.assertIn('<dd class="coral">Not eligible</dd>', html)
+
+    def test_closed_row_is_compact_with_disabled_notify(self):
         html = ticket_html(CLOSED, ELIGIBLE, "ar", TODAY)
-        self.assertIn("ticket compact", html)
-        self.assertIn("pill closed", html)
+        self.assertIn("opp compact", html)
+        self.assertIn("status-closed", html)
         self.assertIn('aria-disabled="true"', html)
         self.assertIn("نبّهني في الدورة القادمة", html)
-        self.assertNotIn("btn-saffron", html)
+        self.assertNotIn("opp-link", html)
 
     def test_untrusted_text_is_escaped(self):
         html = ticket_html(dict(OPEN, title="<img src=x>"), ELIGIBLE, "en", TODAY)

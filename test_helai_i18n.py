@@ -90,7 +90,7 @@ class TranslationTableTests(unittest.TestCase):
             with self.subTest(lang=lang):
                 self.assertIn("HelAI", t("auth.welcome", lang=lang))
         self.assertIn("latin(source_name)", UI_SOURCES["helai_ui.py"])
-        self.assertIn("latin(label)", UI_SOURCES["app.py"])
+        self.assertIn("latin(name)", UI_SOURCES["helai_ui.py"])  # sources list
 
 
 class LookupTests(unittest.TestCase):
@@ -212,12 +212,14 @@ class RtlStylesheetTests(unittest.TestCase):
         for body in rules.values():
             self.assertNotRegex(body, r"letter-spacing:\s*-?\.?\d")
 
-    def test_rtl_direction_covers_main_sidebar_and_menus(self):
+    def test_rtl_direction_covers_main_and_menus(self):
+        # The navigation bar is part of stMain, so it mirrors with the page.
         selectors = " ".join(
             selector for selector, body in css_rules(RTL_CSS) if "direction: rtl" in body
         )
-        for target in ('[data-testid="stMain"]', 'section[data-testid="stSidebar"]', '[data-baseweb="popover"]'):
+        for target in ('[data-testid="stMain"]', '[data-baseweb="popover"]', '[role="tooltip"]'):
             self.assertIn(target, selectors)
+        self.assertNotIn("stSidebar", RTL_CSS)
 
 
 if __name__ == "__main__":

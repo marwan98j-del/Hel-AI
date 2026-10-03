@@ -1,26 +1,21 @@
 [theme]
 base = "dark"
+# Saffron is Streamlit's accent too (checkboxes, focus, selected options);
+# helai_ui keeps chips as outlines and checkbox ticks dark on the fill.
 primaryColor = "#F4B740"
 backgroundColor = "#0E1014"
 secondaryBackgroundColor = "#171A21"
 textColor = "#F3F1EC"
 linkColor = "#F4B740"
 codeBackgroundColor = "#12151A"
-# Geist, Bricolage Grotesque and Vazirmatn are loaded from Google Fonts by
+# Inter and Vazirmatn are loaded from Google Fonts by
 # helai_ui.inject_global_styles; Kurdish and Arabic switch to Vazirmatn.
-font = "Geist, Segoe UI, system-ui, sans-serif"
-baseFontSize = 15
-baseRadius = "14px"
-buttonRadius = "12px"
+font = "Inter, Segoe UI, system-ui, sans-serif"
+baseFontSize = 16
+baseRadius = "24px"
+buttonRadius = "24px"
 borderColor = "#252A33"
 showWidgetBorder = true
-
-[theme.sidebar]
-backgroundColor = "#0B0D10"
-secondaryBackgroundColor = "#12151A"
-textColor = "#B3B7C1"
-primaryColor = "#F4B740"
-borderColor = "#1F232B"
 
 [client]
 # Hide Deploy and the developer menu from users.

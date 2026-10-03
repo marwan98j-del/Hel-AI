@@ -34,13 +34,14 @@ from helai_i18n import (
     t_value,
 )
 from helai_ui import (
-    SUN_ICON,
     feed_limit,
     feed_page,
     filter_results,
     inject_global_styles,
     language_switcher,
-    latin,
+    nav_brand_html,
+    nav_cta_html,
+    nav_links_html,
     profile_completion,
     profile_group,
     render_alerts_card,
@@ -54,6 +55,7 @@ from helai_ui import (
     section_header,
     show_more,
     sign_in_intro_html,
+    sources_html,
     status_label,
     telegram_steps,
     ticket_html,
@@ -84,8 +86,6 @@ st.set_page_config(
     page_title="HelAI",
     page_icon="H",
     layout="wide",
-    # "auto": expanded on desktop, collapsed on phones.
-    initial_sidebar_state="auto"
 )
 
 
@@ -337,7 +337,7 @@ if not st.session_state.access_token:
         )
 
         if auth_mode != "sign_up":
-            with st.form("helai_sign_in_form_v2"):
+            with st.form("helai_sign_in_form_v2", border=False):
                 login_email = st.text_input(
                     t("auth.email"),
                     placeholder="you@example.com",
@@ -387,7 +387,7 @@ if not st.session_state.access_token:
                         )
 
         else:
-            with st.form("helai_sign_up_form_v2"):
+            with st.form("helai_sign_up_form_v2", border=False):
                 signup_name = st.text_input(
                     t("auth.full_name"),
                     placeholder=t("auth.full_name_placeholder"),
@@ -533,7 +533,9 @@ kpis = result_kpis(results)
 
 
 # =========================================================
-# SIDEBAR
+# TOP NAVIGATION
+# Logo, section links, language, the one violet pill and
+# Sign out, in a transparent bar above the page.
 # =========================================================
 
 account_email = ""
@@ -545,16 +547,11 @@ if not account_email and saved_profile:
 account_name = saved_profile.get("full_name") or t("sidebar.default_user")
 completion = profile_completion(saved_profile)
 
-initials = "".join(
-    part[0].upper() for part in account_name.split()[:2] if part
-) or "HA"
-
 source_status = load_source_status()
 source_catalog = get_source_catalog()
 source_rows = []
 for source in source_catalog:
     status = source_status.get(source["key"], {})
-    label = source["source_name"]
     last_status = str(status.get("last_status", "active")).lower()
     discovered = status.get("discovered")
     imported = status.get("imported")
@@ -567,65 +564,46 @@ for source in source_catalog:
             discovered=format_number(discovered),
             imported=format_number(imported),
         )
-    source_health = "danger" if last_status in {"error", "failed"} else ""
     source_rows.append(
-        f"""
-        <div class="source-row">
-            <span class="source-dot {source_health}"></span>
-            <div><div class="source-name">{latin(label)}</div>
-            <div class="source-meta">{html.escape(run_detail)}</div></div>
-        </div>
-        """
-    )
-
-with st.sidebar:
-
-    st.html(
-        f"""
-        <div class="sidebar-brand">
-            {SUN_ICON}
-            <div><div class="brand-name">{latin("HelAI")}</div>
-            <div class="brand-subtitle">{esc("common.opportunity_intelligence")}</div></div>
-        </div>
-        <div class="sidebar-label">{esc("sidebar.account")}</div>
-        <div class="account-card">
-            <div class="account-row">
-                <div class="account-avatar">{html.escape(initials)}</div>
-                <div><div class="account-name" dir="auto">{html.escape(account_name)}</div>
-                <div class="account-email">{latin(account_email)}</div></div>
-            </div>
-            <div class="account-status">{esc("sidebar.profile_complete", pct=format_percent(completion))}</div>
-            <div class="progress-track"><div class="progress-fill" style="width: {completion}%;"></div></div>
-        </div>
-        <div class="sidebar-label">{esc("sidebar.workspace")}</div>
-        <nav class="side-nav">
-            <a class="side-nav-row" href="#ai-import"><span class="side-nav-number">{format_number("01")}</span>{esc("nav.ai_import")}</a>
-            <a class="side-nav-row" href="#cloud-profile"><span class="side-nav-number">{format_number("02")}</span>{esc("nav.cloud_profile")}</a>
-            <a class="side-nav-row" href="#opportunity-booster"><span class="side-nav-number">{format_number("03")}</span>{esc("nav.opportunity_booster")}</a>
-            <a class="side-nav-row" href="#opportunity-map"><span class="side-nav-number">{format_number("04")}</span>{esc("nav.opportunity_map")}</a>
-        </nav>
-        <div class="sidebar-label">{esc("sidebar.sources")}</div>
-        <div class="source-list">{"".join(source_rows)}</div>
-        """
-    )
-
-    st.html(
-        f'<div class="source-meta" style="padding: 10px 4px 0;">{esc("sidebar.opportunities_loaded", count=format_number(len(opportunities)))}</div>'
-    )
-
-    if st.button(
-        t("sidebar.sign_out"),
-        use_container_width=True,
-        key="helai_sign_out",
-        type="secondary",
-        icon=":material/logout:",
-    ):
-        sign_out_user(
-            access_token=st.session_state.access_token,
-            refresh_token=st.session_state.refresh_token,
+        (
+            source["source_name"],
+            run_detail,
+            last_status in {"error", "failed"},
         )
-        clear_auth_state()
-        st.rerun()
+    )
+
+with st.container(key="helai_nav"):
+
+    nav_brand, nav_links, nav_language, nav_cta, nav_sign_out = st.columns(
+        [0.8, 3, 1.55, 0.95, 0.65],
+        vertical_alignment="center",
+    )
+
+    with nav_brand:
+        st.html(nav_brand_html())
+
+    with nav_links:
+        st.html(nav_links_html(lang))
+
+    with nav_language:
+        language_switcher("helai_lang_switch_header")
+
+    with nav_cta:
+        st.html(nav_cta_html(bool(profile), lang))
+
+    with nav_sign_out:
+        if st.button(
+            t("sidebar.sign_out"),
+            key="helai_sign_out",
+            type="secondary",
+            icon=":material/logout:",
+        ):
+            sign_out_user(
+                access_token=st.session_state.access_token,
+                refresh_token=st.session_state.refresh_token,
+            )
+            clear_auth_state()
+            st.rerun()
 
 
 # =========================================================
@@ -634,9 +612,10 @@ with st.sidebar:
 
 search_query = render_header(
     account_name,
+    account_email,
+    completion,
     lang,
     "helai_search",
-    "helai_lang_switch_header",
 )
 
 if st.session_state.pop("helai_profile_saved", False):
@@ -672,7 +651,7 @@ with feed_column:
         "ai-import",
     )
 
-    with st.container(border=True):
+    with st.container():
         st.html(
             f"""
             <div class="workspace-heading"><span class="spark">✦</span>{esc("import.workspace_heading")}</div>
@@ -1129,7 +1108,8 @@ with feed_column:
 
 
     with st.form(
-        "profile_form"
+        "profile_form",
+        border=False,
     ):
 
         left, right = st.columns(
@@ -1559,7 +1539,7 @@ with feed_column:
 
     if telegram_available:
 
-        with st.container(border=True):
+        with st.container():
 
             profile_group(t("telegram.title"))
 
@@ -1693,8 +1673,10 @@ with rail_column:
 
 
 # =========================================================
-# FOOTER
+# SOURCES AND FOOTER
 # =========================================================
+
+st.html(sources_html(source_rows, len(opportunities), lang))
 
 st.html(
     f"""
