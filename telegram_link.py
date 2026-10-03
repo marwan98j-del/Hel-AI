@@ -1,13 +1,20 @@
 """Telegram account linking shared by the app and the collector.
 
 The app creates a short-lived code (with the user's own Supabase session) and
-shows a t.me deep link. The user presses Start, and the next collector run
-matches the code to the profile and saves the chat id. No bot token here.
+shows a t.me deep link. The user presses Start; while the profile is open the
+app starts telegram_link_now.py every few seconds, which matches the code to
+the profile and saves the chat id. Every collector run does the same check, as
+a fallback. No bot token here: the check runs in its own process.
 """
 
 import re
 import secrets
+import subprocess
+import sys
+import threading
+import time
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 from helai_config import TELEGRAM_BOT_USERNAME
 
@@ -17,6 +24,13 @@ from helai_config import TELEGRAM_BOT_USERNAME
 CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 CODE_LENGTH = 12
 LINK_CODE_MINUTES = 30
+# The app swaps in a new code after this, so the bot button never carries a
+# code that runs out while the user is still in Telegram.
+CODE_REUSE_MINUTES = 20
+
+# How often an open profile checks the bot, across all sessions together.
+LINK_CHECK_SECONDS = 4
+LINK_NOW_SCRIPT = Path(__file__).with_name("telegram_link_now.py")
 
 START_PATTERN = re.compile(
     r"^/start(?:@\w+)?(?:\s+(\S+))?\s*$",
@@ -85,13 +99,59 @@ def code_is_usable(code_row, pressed_at):
     return pressed <= expires_at
 
 
-def code_is_pending(created_at, now=None):
-    """True while a code shown in the app can still be used."""
+def code_is_fresh(created_at, now=None):
+    """True while the app may keep showing this code in the bot button."""
     created = parse_timestamp(created_at)
     if created is None:
         return False
     now = now or datetime.now(timezone.utc)
-    return now < created + timedelta(minutes=LINK_CODE_MINUTES)
+    return now < created + timedelta(minutes=CODE_REUSE_MINUTES)
+
+
+class LinkCheckRunner:
+    """Starts telegram_link_now.py: one at a time, at most every few seconds.
+
+    The check needs the bot token and the service key, which never enter the
+    web app's process; the child loads the collector's .env on its own. One
+    runner serves every session, so many open profiles still mean one check.
+    """
+
+    def __init__(
+        self,
+        command=None,
+        min_interval=LINK_CHECK_SECONDS,
+        clock=time.monotonic,
+        popen=subprocess.Popen,
+    ):
+        self.command = command or [sys.executable, str(LINK_NOW_SCRIPT)]
+        self.min_interval = min_interval
+        self.clock = clock
+        self.popen = popen
+        self.lock = threading.Lock()
+        self.process = None
+        self.started = None
+
+    def request(self):
+        """Start a check unless one is running or started moments ago."""
+        with self.lock:
+            if self.process is not None and self.process.poll() is None:
+                return False
+
+            now = self.clock()
+            if (
+                self.started is not None
+                and now - self.started < self.min_interval
+            ):
+                return False
+
+            self.started = now
+            self.process = self.popen(
+                self.command,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+            return True
 
 
 # =========================================================

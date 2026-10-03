@@ -1,4 +1,8 @@
+import contextlib
+import io
 import re
+import subprocess
+import sys
 import unittest
 from datetime import date, datetime, timedelta, timezone
 from types import SimpleNamespace
@@ -7,10 +11,12 @@ from unittest.mock import MagicMock, patch
 import requests
 
 import helai_pipeline
+import helai_ui
 import notification_service
 import telegram_link
+import telegram_link_now
 import telegram_service
-from helai_i18n import t, translate_match_message
+from helai_i18n import EN, TRANSLATIONS, t, translate_match_message
 
 
 TODAY = date(2026, 10, 2)
@@ -238,11 +244,13 @@ class LinkCodeTests(unittest.TestCase):
         self.assertFalse(telegram_link.code_is_usable(None, now))
         self.assertFalse(telegram_link.code_is_usable({"expires_at": None}, now))
 
-    def test_pending_code_in_the_app_lasts_thirty_minutes(self):
+    def test_app_replaces_its_code_well_before_it_expires(self):
         created = datetime(2026, 10, 2, 12, 0, tzinfo=timezone.utc)
-        self.assertTrue(telegram_link.code_is_pending(created.isoformat(), created + timedelta(minutes=29)))
-        self.assertFalse(telegram_link.code_is_pending(created.isoformat(), created + timedelta(minutes=30)))
-        self.assertFalse(telegram_link.code_is_pending(None))
+        self.assertTrue(telegram_link.code_is_fresh(created.isoformat(), created + timedelta(minutes=19)))
+        self.assertFalse(telegram_link.code_is_fresh(created.isoformat(), created + timedelta(minutes=20)))
+        self.assertFalse(telegram_link.code_is_fresh(None))
+        # A code taken from the button still has ten minutes to be used.
+        self.assertGreaterEqual(telegram_link.LINK_CODE_MINUTES - telegram_link.CODE_REUSE_MINUTES, 10)
 
     def test_app_creates_code_without_choosing_expiry(self):
         client = FakeClient()
@@ -263,7 +271,7 @@ class LinkingFlowTests(unittest.TestCase):
             "text": text,
         }
 
-    def client(self, used_at=None, claimed=True):
+    def client(self, used_at=None, claimed=True, linked_chat=None):
         return FakeClient({
             ("telegram_link_codes", "select"): [{
                 "code": "ABCDEFGH2345",
@@ -272,6 +280,7 @@ class LinkingFlowTests(unittest.TestCase):
                 "used_at": used_at,
             }],
             ("telegram_link_codes", "update"): [{"code": "ABCDEFGH2345"}] if claimed else [],
+            ("telegram_connections", "select"): [{"chat_id": linked_chat}] if linked_chat else [],
             ("profiles", "select"): [{"id": "u1", "preferred_language": "Arabic"}],
         })
 
@@ -317,6 +326,20 @@ class LinkingFlowTests(unittest.TestCase):
         self.assertEqual(outcome, "invalid")
         self.assertFalse(client.actions("telegram_connections", "upsert"))
 
+    def test_start_read_by_both_the_app_and_the_collector_links_quietly_once(self):
+        # The other process claimed the code between our read and our claim.
+        client = self.client(claimed=False, linked_chat=555)
+        outcome, send = self.run_start(client, self.message("/start ABCDEFGH2345"))
+        self.assertEqual(outcome, "duplicate")
+        send.assert_not_called()
+        self.assertFalse(client.actions("telegram_connections", "upsert"))
+
+    def test_used_code_from_another_chat_is_still_rejected(self):
+        client = self.client(used_at="2026-10-02T12:01:00+00:00", linked_chat=999)
+        outcome, send = self.run_start(client, self.message("/start ABCDEFGH2345"))
+        self.assertEqual(outcome, "invalid")
+        self.assertIn(t("telegram.link_invalid", lang="en"), send.call_args.args[1])
+
     def test_malformed_code_never_reaches_the_database(self):
         client = self.client()
         outcome, _send = self.run_start(client, self.message("/start nope"))
@@ -350,6 +373,159 @@ class LinkingFlowTests(unittest.TestCase):
         self.assertEqual(counts["hint"], 1)
         self.assertEqual(counts["ignored"], 1)
         self.assertEqual(get_updates.call_args_list[1].kwargs, {"offset": 43, "limit": 1})
+
+
+# =========================================================
+# INSTANT LINKING FROM THE APP
+# =========================================================
+
+class FakeProcess:
+    def __init__(self):
+        self.finished = False
+
+    def poll(self):
+        return 0 if self.finished else None
+
+
+class LinkCheckRunnerTests(unittest.TestCase):
+    def runner(self):
+        self.now = 100.0
+        self.started = []
+
+        def popen(command, **kwargs):
+            self.started.append((command, kwargs))
+            return FakeProcess()
+
+        return telegram_link.LinkCheckRunner(clock=lambda: self.now, popen=popen)
+
+    def test_runs_the_link_now_script_with_this_python(self):
+        runner = self.runner()
+        self.assertTrue(runner.request())
+        command, kwargs = self.started[0]
+        self.assertEqual(command, [sys.executable, str(telegram_link.LINK_NOW_SCRIPT)])
+        self.assertTrue(telegram_link.LINK_NOW_SCRIPT.exists())
+        self.assertEqual(kwargs["stdout"], subprocess.DEVNULL)
+
+    def test_one_check_at_a_time(self):
+        runner = self.runner()
+        runner.request()
+        self.now += 60
+        self.assertFalse(runner.request())
+        self.assertEqual(len(self.started), 1)
+
+    def test_finished_check_waits_out_the_interval(self):
+        runner = self.runner()
+        runner.request()
+        runner.process.finished = True
+        self.now += telegram_link.LINK_CHECK_SECONDS - 1
+        self.assertFalse(runner.request())
+        self.now += 1
+        self.assertTrue(runner.request())
+        self.assertEqual(len(self.started), 2)
+
+    def test_a_check_that_cannot_start_is_not_retried_at_once(self):
+        runner = self.runner()
+        runner.popen = MagicMock(side_effect=OSError("no python"))
+        with self.assertRaises(OSError):
+            runner.request()
+        self.assertFalse(runner.request())
+        runner.popen.assert_called_once()
+
+
+class LinkNowScriptTests(unittest.TestCase):
+    def run_main(self, counts):
+        stderr = io.StringIO()
+
+        def fake_process():
+            print("HELAI TELEGRAM LINKING banner")
+            return counts
+
+        with (
+            patch("telegram_link_now.process_link_codes", side_effect=fake_process),
+            contextlib.redirect_stderr(stderr),
+            contextlib.redirect_stdout(io.StringIO()) as stdout,
+        ):
+            code = telegram_link_now.main()
+        return code, stdout.getvalue(), stderr.getvalue()
+
+    def test_quiet_when_there_is_nothing_to_link(self):
+        self.assertEqual(self.run_main({"linked": 0, "errors": 0}), (0, "", ""))
+
+    def test_reports_links_and_errors_to_the_server_log(self):
+        _code, _stdout, stderr = self.run_main({"linked": 2, "errors": 0})
+        self.assertIn("linked 2", stderr)
+        _code, _stdout, stderr = self.run_main({"linked": 0, "errors": 0, "error": "Telegram API error 409"})
+        self.assertIn("banner", stderr)
+
+    def test_reads_the_bot_and_links_a_waiting_user(self):
+        update = {
+            "update_id": 7,
+            "message": {
+                "chat": {"id": 555, "type": "private"},
+                "from": {"language_code": "en"},
+                "date": int(datetime.now(timezone.utc).timestamp()),
+                "text": "/start ABCDEFGH2345",
+            },
+        }
+        future = (datetime.now(timezone.utc) + timedelta(minutes=20)).isoformat()
+        client = FakeClient({
+            ("telegram_link_codes", "select"): [{"code": "ABCDEFGH2345", "user_id": "u1", "expires_at": future, "used_at": None}],
+            ("telegram_link_codes", "update"): [{"code": "ABCDEFGH2345"}],
+        })
+        with (
+            patch.object(telegram_service, "TELEGRAM_BOT_TOKEN", FAKE_TOKEN),
+            patch("telegram_service.get_updates", side_effect=[{"success": True, "data": [update]}, {"success": True, "data": []}]),
+            patch("telegram_service.get_supabase", return_value=client),
+            patch("telegram_service.get_one", return_value=None),
+            patch("telegram_service.send_message", return_value={"success": True}),
+            contextlib.redirect_stderr(io.StringIO()),
+        ):
+            telegram_link_now.main()
+        connection = client.actions("telegram_connections", "upsert")[0]["payload"]
+        self.assertEqual((connection["user_id"], connection["chat_id"]), ("u1", 555))
+
+
+class ConnectSectionTests(unittest.TestCase):
+    CONNECTED = {"connected_at": "2026-10-03T09:00:00+00:00"}
+
+    def test_status_then_instruction_then_button_in_every_language(self):
+        for lang in ("ckb", "en", "ar"):
+            for connection in (None, self.CONNECTED):
+                with self.subTest(lang=lang, connected=bool(connection)):
+                    steps = helai_ui.telegram_steps(connection, lang)
+                    self.assertEqual([part for part, _text in steps], ["status", "instruction", "button"])
+                    self.assertTrue(all(text.strip() for _part, text in steps))
+
+    def test_not_connected_says_what_to_do_with_one_button(self):
+        steps = dict(helai_ui.telegram_steps(None, "en"))
+        self.assertEqual(steps["status"], t("telegram.not_connected", lang="en"))
+        self.assertIn("Start", steps["instruction"])
+        self.assertEqual(steps["button"], t("telegram.connect_button", lang="en"))
+
+    def test_connected_state_is_clear(self):
+        for lang, date_text in (("en", "3 OCT 2026"), ("ar", "٢٠٢٦")):
+            with self.subTest(lang=lang):
+                steps = dict(helai_ui.telegram_steps(self.CONNECTED, lang))
+                self.assertIn(date_text, steps["status"])
+                self.assertEqual(steps["instruction"], t("telegram.connected_copy", lang=lang))
+                self.assertEqual(steps["button"], t("telegram.disconnect_button", lang=lang))
+
+    def test_no_code_text_or_hours_wait_in_any_language(self):
+        for key in ("telegram.code_help", "telegram.pending_help", "telegram.open_bot"):
+            self.assertNotIn(key, EN)
+        for lang in ("en", "ckb", "ar"):
+            text = " ".join(
+                value for key, value in TRANSLATIONS[lang].items() if key.startswith("telegram.")
+            )
+            with self.subTest(lang=lang):
+                self.assertNotIn("{code}", text)
+                self.assertNotIn("{minutes}", text)
+        self.assertNotIn("hours", t("telegram.instruction", lang="en"))
+
+    def test_bot_tells_the_user_to_go_back_to_the_app(self):
+        for lang in ("en", "ckb", "ar"):
+            with self.subTest(lang=lang):
+                self.assertIn("HelAI", t("telegram.linked", lang=lang))
 
 
 # =========================================================

@@ -631,15 +631,40 @@ def section_header(number: str, eyebrow: str, title: str, description: str, anch
     )
 
 
-def profile_group(title: str, description: str) -> None:
+def profile_group(title: str, description: str = "") -> None:
+    copy = (
+        f'<div class="profile-group-copy">{html.escape(description)}</div>'
+        if description
+        else ""
+    )
     st.html(
         f"""
         <div class="profile-group">
             <div class="profile-group-title">{html.escape(title)}</div>
-            <div class="profile-group-copy">{html.escape(description)}</div>
+            {copy}
         </div>
         """
     )
+
+
+def telegram_steps(connection: dict | None, lang: str | None = None) -> list[tuple[str, str]]:
+    """The Telegram section in reading order: status, instruction, button."""
+    if connection:
+        connected_on = format_date(
+            str(connection.get("connected_at") or "")[:10],
+            lang,
+        )
+        return [
+            ("status", t("telegram.connected_since", lang=lang, date=connected_on)),
+            ("instruction", t("telegram.connected_copy", lang=lang)),
+            ("button", t("telegram.disconnect_button", lang=lang)),
+        ]
+
+    return [
+        ("status", t("telegram.not_connected", lang=lang)),
+        ("instruction", t("telegram.instruction", lang=lang)),
+        ("button", t("telegram.connect_button", lang=lang)),
+    ]
 
 
 def render_empty_state(title: str, description: str) -> None:

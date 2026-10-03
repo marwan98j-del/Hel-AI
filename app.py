@@ -55,6 +55,7 @@ from helai_ui import (
     show_more,
     sign_in_intro_html,
     status_label,
+    telegram_steps,
     ticket_html,
 )
 from auth_service import (
@@ -66,9 +67,10 @@ from auth_service import (
     sign_out_user,
 )
 from telegram_link import (
-    LINK_CODE_MINUTES,
+    LINK_CHECK_SECONDS,
+    LinkCheckRunner,
     bot_link,
-    code_is_pending,
+    code_is_fresh,
     create_link_code,
     disconnect as disconnect_telegram,
     load_connection as load_telegram_connection,
@@ -279,6 +281,26 @@ def user_client():
         st.session_state.access_token,
         st.session_state.refresh_token,
     )
+
+
+@st.cache_resource
+def telegram_link_checker():
+    # One for the whole server: every open profile shares the same checks.
+    return LinkCheckRunner()
+
+
+def telegram_link_code():
+    """The code in the bot button, replaced well before it expires."""
+    saved = st.session_state.get("helai_telegram_code")
+    if saved and code_is_fresh(saved["created_at"]):
+        return saved["code"]
+
+    code = create_link_code(user_client(), current_user_id())
+    st.session_state.helai_telegram_code = {
+        "code": code,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    return code
 
 
 # =========================================================
@@ -1482,92 +1504,95 @@ with feed_column:
 
     # =========================================================
     # TELEGRAM CONNECTION
-    # The app only creates a short-lived code; the collector run
-    # links the chat when the user presses Start in Telegram.
+    # Status, one instruction, one button that opens the bot with
+    # the code attached. While the user is not connected, the app
+    # checks the bot every few seconds, so Connected shows soon
+    # after they press Start; collector runs link as a fallback.
     # =========================================================
+
+    def telegram_instruction(text):
+        st.html(f'<div class="profile-group-copy">{html.escape(text)}</div>')
+
+
+    @st.fragment(run_every=LINK_CHECK_SECONDS)
+    def telegram_connect_steps():
+        try:
+            telegram_link_checker().request()
+        except Exception as error:
+            log_error("Telegram link check", error)
+
+        try:
+            connection = load_telegram_connection(
+                user_client(),
+                current_user_id(),
+            )
+        except Exception as error:
+            log_error("Telegram", error)
+            connection = None
+
+        if connection:
+            # Linking turned the alerts on; redraw the whole profile.
+            if st.session_state.cloud_profile:
+                st.session_state.cloud_profile["notify_telegram"] = True
+            st.rerun()
+
+        try:
+            code = telegram_link_code()
+        except Exception as error:
+            log_error("Telegram", error)
+            st.error(t("telegram.error"))
+            return
+
+        for part, text in telegram_steps(None, lang):
+            if part == "status":
+                st.info(text)
+            elif part == "instruction":
+                telegram_instruction(text)
+            else:
+                st.link_button(
+                    text,
+                    bot_link(code),
+                    type="primary",
+                    use_container_width=True,
+                )
+
 
     if telegram_available:
 
         with st.container(border=True):
 
-            profile_group(
-                t("telegram.title"),
-                t("telegram.copy"),
-            )
+            profile_group(t("telegram.title"))
 
             if st.session_state.pop("helai_telegram_disconnected", False):
                 st.success(t("telegram.disconnected"))
 
             if telegram_connection:
 
-                st.success(
-                    t(
-                        "telegram.connected_since",
-                        date=format_date(
-                            str(telegram_connection.get("connected_at") or "")[:10],
-                            lang,
-                        ),
-                    )
-                )
-
-                if st.button(
-                    t("telegram.disconnect_button"),
-                    key="helai_telegram_disconnect",
-                    type="secondary",
-                ):
-                    try:
-                        disconnect_telegram(user_client(), current_user_id())
-                    except Exception as error:
-                        log_error("Telegram", error)
-                        st.error(t("telegram.error"))
-                    else:
-                        if st.session_state.cloud_profile:
-                            st.session_state.cloud_profile["notify_telegram"] = False
-                        st.session_state.pop("helai_telegram_code", None)
-                        st.session_state.helai_telegram_disconnected = True
-                        st.rerun()
+                for part, text in telegram_steps(telegram_connection, lang):
+                    if part == "status":
+                        st.success(text)
+                    elif part == "instruction":
+                        telegram_instruction(text)
+                    elif st.button(
+                        text,
+                        key="helai_telegram_disconnect",
+                        type="secondary",
+                    ):
+                        try:
+                            disconnect_telegram(user_client(), current_user_id())
+                        except Exception as error:
+                            log_error("Telegram", error)
+                            st.error(t("telegram.error"))
+                        else:
+                            if st.session_state.cloud_profile:
+                                st.session_state.cloud_profile["notify_telegram"] = False
+                            st.session_state.pop("helai_telegram_code", None)
+                            st.session_state.helai_telegram_disconnected = True
+                            st.rerun()
 
             else:
 
-                st.info(t("telegram.not_connected"))
-
-                pending_code = st.session_state.get("helai_telegram_code")
-
-                if pending_code and code_is_pending(pending_code["created_at"]):
-                    st.link_button(
-                        t("telegram.open_bot"),
-                        bot_link(pending_code["code"]),
-                        type="primary",
-                        use_container_width=True,
-                    )
-                    st.caption(
-                        t(
-                            "telegram.code_help",
-                            minutes=format_number(LINK_CODE_MINUTES),
-                            code=pending_code["code"],
-                        )
-                    )
-                    st.caption(t("telegram.pending_help"))
-                else:
-                    pending_code = None
-
-                if st.button(
-                    t("telegram.connect_button"),
-                    key="helai_telegram_connect",
-                    type="secondary" if pending_code else "primary",
-                    use_container_width=True,
-                ):
-                    try:
-                        code = create_link_code(user_client(), current_user_id())
-                    except Exception as error:
-                        log_error("Telegram", error)
-                        st.error(t("telegram.error"))
-                    else:
-                        st.session_state.helai_telegram_code = {
-                            "code": code,
-                            "created_at": datetime.now(timezone.utc).isoformat(),
-                        }
-                        st.rerun()
+                telegram_connect_steps()
 
 
     # =========================================================

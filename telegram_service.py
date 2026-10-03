@@ -382,7 +382,7 @@ def load_chat_id(client, user_id):
 
 
 def handle_start(client, message, now):
-    """Returns 'linked', 'invalid', 'hint' or 'ignored'."""
+    """Returns 'linked', 'duplicate', 'invalid', 'hint' or 'ignored'."""
     chat = message.get("chat") or {}
     if chat.get("type") != "private":
         return "ignored"
@@ -408,6 +408,14 @@ def handle_start(client, message, now):
         not code_is_usable(code_row, message.get("date"))
         or not claim_code(client, code, now)
     ):
+        # The app's check and a collector run can both read this update;
+        # whichever comes second finds the chat already linked and stays quiet.
+        if (
+            code_row
+            and str(load_chat_id(client, code_row["user_id"])) == str(chat_id)
+        ):
+            return "duplicate"
+
         reply(chat_id, "telegram.link_invalid", lang)
         return "invalid"
 
@@ -429,7 +437,14 @@ def process_link_codes(client=None, now=None):
     print("       HELAI TELEGRAM LINKING")
     print("========================================")
 
-    counts = {"linked": 0, "invalid": 0, "hint": 0, "ignored": 0, "errors": 0}
+    counts = {
+        "linked": 0,
+        "duplicate": 0,
+        "invalid": 0,
+        "hint": 0,
+        "ignored": 0,
+        "errors": 0,
+    }
 
     if not TELEGRAM_BOT_TOKEN:
         print("SKIPPED: TELEGRAM_BOT_TOKEN was not found in .env")

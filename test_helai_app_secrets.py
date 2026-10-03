@@ -98,6 +98,30 @@ class AppProcessSecretsTests(unittest.TestCase):
                     self.assertIsNone(result["env"][name])
         self.assertFalse(COLLECTOR_MODULES & set(result["modules"]))
 
+    def test_link_check_child_gets_the_token_the_app_never_holds(self):
+        # The same start-up as telegram_link_now.py, launched from app mode.
+        code = (
+            "import json, os, subprocess, sys\n"
+            "import helai_env\n"
+            "helai_env.use_app_secrets()\n"
+            "import telegram_link\n"
+            "child = subprocess.run([sys.executable, '-c',"
+            " 'import helai_env, os; helai_env.load_env();"
+            " print(os.environ.get(\"TELEGRAM_BOT_TOKEN\"))'],"
+            " capture_output=True, text=True, check=True)\n"
+            "print(json.dumps({'app': os.environ.get('TELEGRAM_BOT_TOKEN'),"
+            " 'child': child.stdout.strip()}))\n"
+        )
+        result = run_python(code, self.env_file)
+        self.assertIsNone(result["app"])
+        self.assertEqual(result["child"], FAKE_ENV["TELEGRAM_BOT_TOKEN"])
+
+    def test_link_now_script_starts_like_a_collector_script(self):
+        tree = ast.parse((HERE / "telegram_link_now.py").read_text(encoding="utf-8"))
+        source = ast.unparse(tree)
+        self.assertNotIn("use_app_secrets", source)
+        self.assertIn("from telegram_service import", source)
+
     def test_collector_process_still_loads_everything(self):
         code = (
             "import json, os\n"
